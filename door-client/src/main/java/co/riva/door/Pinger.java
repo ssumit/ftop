@@ -19,14 +19,14 @@ class Pinger {
     @NotNull
     private final Sender _sender;
     @NotNull
-    private final DoorClient.DoorLogger _doorLogger;
+    private final DoorLogger _doorLogger;
     private final ScheduledExecutorService executor;
     @Nullable
     private ScheduledFuture<?> _pingTask;
     private volatile long _lastInteractionTimeInMillis = System.currentTimeMillis();
     private PingerState _state;
 
-    public Pinger(@NotNull Sender sender, @NotNull DoorClient.DoorLogger doorLogger, ScheduledExecutorService executor) {
+    public Pinger(@NotNull Sender sender, @NotNull DoorLogger doorLogger, ScheduledExecutorService executor) {
         _sender = sender;
         _doorLogger = doorLogger;
         this.executor = executor;
@@ -40,41 +40,35 @@ class Pinger {
     }
 
     private ScheduledFuture<?> getPingTask(ScheduledExecutorService executor) {
-        return executor.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                new ExceptionThrowingFutureTask(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (isTimedOut()) {
-                                _doorLogger.log("ping pong timed out");
-                                fireTimeOut();
-                                stop();
-                            } else {
-                                _doorLogger.log("sending ping");
-                                _sender.sendPing();
-                                _state = PingerState.PING_SENT;
-                            }
-                        } catch (Exception ignored) {
-                            _doorLogger.log("Received exception in pinger:" + ignored);
-                            stop();
-                        }
-                    }
-                }).run();
+        return executor.scheduleAtFixedRate((Runnable) () -> {
+            try {
+                if (isTimedOut()) {
+                    _doorLogger.log("ping pong timed out");
+                    fireTimeOut();
+                    stop();
+                } else {
+                    _doorLogger.log("sending ping");
+                    _sender.sendPing();
+                    _state = PingerState.PING_SENT;
+                }
+            } catch (Exception ignored) {
+                _doorLogger.log("Received exception in pinger:" + ignored);
+                stop();
             }
         }, 0, PINGER_INTERVAL_IN_SEC, TimeUnit.SECONDS);
     }
 
     public void stop() {
         _doorLogger.log("Inside ping stop with pingtask:" + _pingTask);
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         if (_pingTask != null) {
             _pingTask.cancel(true);
+        } else {
+            //todo: find bug and remove the following
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

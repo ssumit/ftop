@@ -1,7 +1,6 @@
 package co.riva.door;
 
 import co.riva.door.config.IConnectionConfig;
-import co.riva.door.event.IEventLogger;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.util.concurrent.FutureCallback;
@@ -21,7 +20,7 @@ import co.riva.door.config.DoorConfig;
 
 import static co.riva.door.FutureUtils.thenOnException;
 
-//ThreadSafe
+//Not ThreadSafe
 public class DoorClient implements Pinger.Sender {
     @NotNull
     private final CopyOnWriteArraySet<DoorListener> _listeners = new CopyOnWriteArraySet<>();
@@ -33,7 +32,7 @@ public class DoorClient implements Pinger.Sender {
     private final DoorConfig doorConfig;
     @Nullable
     private Transport _transport;
-    private volatile State state;
+    private State state;
     private CompletableFuture<Void> isConnectionReady;
 
     public DoorClient(@NotNull DoorConfig doorConfig,
@@ -51,11 +50,10 @@ public class DoorClient implements Pinger.Sender {
      * If already connected then AlreadyConnectedException is set in the future.
      */
     @SuppressWarnings("UnusedDeclaration")
-    public CompletionStage<Void> connect(@Nullable final IEventLogger eventLogger,
-                                         @NotNull final IConnectionConfig connectionConfig) {
+    public CompletionStage<Void> connect(@NotNull final IConnectionConfig connectionConfig) {
         if (isDisconnected()) {
             state = State.CONNECTING;
-            _transport = new Transport(eventLogger);
+            _transport = new Transport();
             _transport.setListener(getTransportListener());
             final String host = connectionConfig.getHost();
             final int port = connectionConfig.getPort();
@@ -354,23 +352,5 @@ public class DoorClient implements Pinger.Sender {
 
     private enum State {
         DISCONNECTED, CONNECTING, CONNECTED_AUTHENTICATION_PENDING, CONNECTED_AUTHENTICATED
-    }
-
-    public interface DoorLogger {
-        void log(String s);
-    }
-
-    public interface DoorListener {
-        void onBytesReceived(String connectionId, DoorEnvelopeType type, byte... data);
-
-        void onConnected(boolean isAuthenticated);
-
-        void onDisconnected(Throwable reason, IConnectionConfig connectionConfig);
-
-        void onAlert(String message);
-
-        void onEndReceived(String connectionId, String reason);
-
-        void onErrorReceived(String connectionId, String reason);
     }
 }

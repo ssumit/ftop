@@ -2,7 +2,6 @@ package co.riva.door;
 
 import co.riva.door.config.IConnectionConfig;
 import co.riva.door.config.Protocol;
-import co.riva.door.event.IEventLogger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,10 +9,7 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static co.riva.door.FutureUtils.thenOnException;
@@ -27,14 +23,9 @@ class Transport {
     private Socket _socket;
     @Nullable
     private SocketHandlerEventListener _listener;
-    @Nullable
-    private IEventLogger _eventLogger;
-    private volatile long _connectCallTime;
-    private volatile String _connectionStage;
     private AtomicBoolean _disconnectionLogged = new AtomicBoolean(false);
 
-    public Transport(@Nullable IEventLogger eventLogger) {
-        _eventLogger = eventLogger;
+    public Transport() {
         _framingProtocol = new FrameMaker();
         HttpsURLConnection.setDefaultHostnameVerifier((s, sslSession) -> true);
         _framingProtocol.addListener(this::fireOnMessage);
@@ -78,18 +69,10 @@ class Transport {
     public CompletionStage<Void> connect(String host, int port) {
         checkNull(_socket);
 
-        _connectionStage = "DNS";
         _disconnectionLogged.set(false);
-        _connectCallTime = System.nanoTime();
         _socket = new TLSSocket(host, port, getSocketListener());
         return _socket.connect()
-                .whenComplete(thenOnException(throwable -> {
-                    _disconnectionLogged.set(true);
-                    final HashMap<String, String> customParams = new HashMap<>(2);
-                    customParams.put("connectionStage", _connectionStage);
-                    customParams.put("failureReason", throwable.getMessage());
-                    logEvent("connection_failure_time", System.nanoTime() - _connectCallTime, customParams, false);
-                }));
+                .whenComplete(thenOnException(throwable -> _disconnectionLogged.set(true)));
     }
 
     @NotNull
@@ -97,30 +80,16 @@ class Transport {
         return new SocketListener() {
             @Override
             public void onDNSResolved(long resolutionTimeInNanos, InetSocketAddress resolvedAddress) {
-                final HashMap<String, String> customParams = new HashMap<>(2);
-                customParams.put("resolvedAddress", resolvedAddress.toString());
-                logEvent("dns_time", resolutionTimeInNanos, customParams, true);
-                _connectionStage = "TCPHandshake";
             }
 
             @Override
             public void onTCPHandshake(long handshakeTimeInNanos,
                                        long connectionTimeoutInMilliseconds) {
-                final HashMap<String, String> customParams = new HashMap<>(2);
-                customParams
-                        .put("tcpConnectTimeout", String.valueOf(connectionTimeoutInMilliseconds));
-                logEvent("tcp_handshake_time", handshakeTimeInNanos, customParams, true);
-                _connectionStage = "ProtocolHandshake";
             }
 
             @Override
             public void onProtocolHandshake(long handshakeTimeInNanos,
                                             long readTimeoutInMilliseconds) {
-                final HashMap<String, String> customParams = new HashMap<>(2);
-                customParams.put("tcpReadTimeout", String.valueOf(readTimeoutInMilliseconds));
-                String eventName = "ssl_handshake_time";
-                logEvent(eventName, handshakeTimeInNanos, customParams, true);
-                _connectionStage = "receiveFirstByte";
             }
 
             @Override
@@ -131,11 +100,6 @@ class Transport {
             @Override
             public void onFirstByteReceived(long timeToFirstByteAfterHandshakeInNanos,
                                             long readTimeoutInMilliseconds) {
-                final HashMap<String, String> customParams = new HashMap<>(2);
-                customParams.put("tcpReadTimeout", String.valueOf(readTimeoutInMilliseconds));
-                logEvent("first_byte_received_time", timeToFirstByteAfterHandshakeInNanos,
-                        customParams, true);
-                _connectionStage = "complete";
             }
 
             @Override
@@ -168,10 +132,6 @@ class Transport {
         if (_disconnectionLogged.getAndSet(true)) {
             return;
         }
-
-        final HashMap<String, String> customParams = new HashMap<>(1);
-        customParams.put("disconnectionReason", reason);
-        logEvent("socket_disconnected", System.nanoTime() - _connectCallTime, customParams, false);
     }
 
     public void send(@NotNull byte[] data) throws IOException {
@@ -216,23 +176,6 @@ class Transport {
     private void fireOnAlert(byte[] msg) {
         if (_listener != null) {
             _listener.onAlert(msg);
-        }
-    }
-
-
-    private void logEvent(String eventName, long eventDurationInNanos,
-                          Map<String, String> customParams, boolean addTimeSinceDoorConnectParam) {
-        if (_eventLogger != null) {
-            if (addTimeSinceDoorConnectParam) {
-                if (customParams == null) {
-                    customParams = new HashMap<>(1);
-                }
-                customParams.put("timeSinceDoorConnectCall", String.valueOf(TimeUnit.MILLISECONDS
-                        .convert(System.nanoTime() - _connectCallTime, TimeUnit.NANOSECONDS)));
-            }
-            _eventLogger.logEvent(eventName,
-                    TimeUnit.MILLISECONDS.convert(eventDurationInNanos, TimeUnit.NANOSECONDS),
-                    customParams);
         }
     }
 

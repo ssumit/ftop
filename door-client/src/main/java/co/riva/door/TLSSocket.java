@@ -63,7 +63,7 @@ class TLSSocket implements Socket {
             });
             socket.startHandshake();
 
-            fireOpenListener(true);
+            fireOpenListener(false);
             startReading();
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {

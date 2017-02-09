@@ -1,5 +1,6 @@
 import co.riva.door.DoorClient;
 import co.riva.door.DoorEnvelopeType;
+import co.riva.door.DoorListener;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.IConnectionConfig;
 import co.riva.door.config.Protocol;
@@ -16,7 +17,7 @@ public class DoorTest {
         DoorConfig doorConfig = new DoorConfig(SOCKET_TIMEOUT_MILLIS, true, "test");
         DoorClient client = new DoorClient(doorConfig, System.out::println);
 
-        client.addListener(new DoorClient.DoorListener() {
+        client.addListener(new DoorListener() {
             @Override
             public void onBytesReceived(String id, DoorEnvelopeType type, byte[] data) {
                 System.out.println("Data : " + new String(data));
@@ -48,7 +49,7 @@ public class DoorTest {
             }
         });
 
-        client.connect(null, new IConnectionConfig() {
+        client.connect(new IConnectionConfig() {
             @Override
             public String getHost() {
                 return DOOR_HOST;
