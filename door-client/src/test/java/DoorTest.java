@@ -2,7 +2,7 @@ import co.riva.door.DoorClient;
 import co.riva.door.DoorEnvelopeType;
 import co.riva.door.DoorListener;
 import co.riva.door.config.DoorConfig;
-import co.riva.door.config.IConnectionConfig;
+import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.Protocol;
 
 import java.io.IOException;
@@ -24,12 +24,12 @@ public class DoorTest {
             }
 
             @Override
-            public void onConnected(boolean isAuthenticated) {
-                System.out.println("Connected : " + isAuthenticated);
+            public void onConnected(boolean isConnected) {
+                System.out.println("Connected : " + isConnected);
             }
 
             @Override
-            public void onDisconnected(Throwable reason, IConnectionConfig connectionConfig) {
+            public void onDisconnected(Throwable reason, ConnectionConfig connectionConfig) {
                 System.out.println("Disconnected : " + reason);
             }
 
@@ -49,21 +49,6 @@ public class DoorTest {
             }
         });
 
-        client.connect(new IConnectionConfig() {
-            @Override
-            public String getHost() {
-                return DOOR_HOST;
-            }
-
-            @Override
-            public int getPort() {
-                return DOOR_PORT;
-            }
-
-            @Override
-            public Protocol getProtocol() {
-                return Protocol.TLS;
-            }
-        });
+        client.connect(new ConnectionConfig(DOOR_HOST, DOOR_PORT, Protocol.TLS));
     }
 }

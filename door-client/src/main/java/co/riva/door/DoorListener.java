@@ -1,13 +1,13 @@
 package co.riva.door;
 
-import co.riva.door.config.IConnectionConfig;
+import co.riva.door.config.ConnectionConfig;
 
 public interface DoorListener {
     void onBytesReceived(String connectionId, DoorEnvelopeType type, byte... data);
 
-    void onConnected(boolean isAuthenticated);
+    void onConnected(boolean isConnected);
 
-    void onDisconnected(Throwable reason, IConnectionConfig connectionConfig);
+    void onDisconnected(Throwable reason, ConnectionConfig connectionConfig);
 
     void onAlert(String message);
 

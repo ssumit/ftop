@@ -1,17 +1,14 @@
 package co.riva.door;
 
-import co.riva.door.config.IConnectionConfig;
+import co.riva.door.config.ConnectionConfig;
+import co.riva.door.config.Protocol;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -23,7 +20,7 @@ import static co.riva.door.FutureUtils.thenOnException;
 //Not ThreadSafe
 public class DoorClient implements Pinger.Sender {
     @NotNull
-    private final CopyOnWriteArraySet<DoorListener> _listeners = new CopyOnWriteArraySet<>();
+    private final CopyOnWriteArraySet<DoorListener> listeners = new CopyOnWriteArraySet<>();
     @NotNull
     private final Pinger pinger;
     @NotNull
@@ -31,7 +28,7 @@ public class DoorClient implements Pinger.Sender {
     @NotNull
     private final DoorConfig doorConfig;
     @Nullable
-    private Transport _transport;
+    private Transport transport;
     private State state;
     private CompletableFuture<Void> isConnectionReady;
 
@@ -50,20 +47,22 @@ public class DoorClient implements Pinger.Sender {
      * If already connected then AlreadyConnectedException is set in the future.
      */
     @SuppressWarnings("UnusedDeclaration")
-    public CompletionStage<Void> connect(@NotNull final IConnectionConfig connectionConfig) {
+    public CompletionStage<Void> connect(@NotNull ConnectionConfig connectionConfig) {
         if (isDisconnected()) {
             state = State.CONNECTING;
-            _transport = new Transport();
-            _transport.setListener(getTransportListener());
-            final String host = connectionConfig.getHost();
-            final int port = connectionConfig.getPort();
+            transport = new Transport();
+            transport.setListener(getTransportListener());
             final int socketTimeout = doorConfig.getSocketTimeout();
 
-            return _transport.connect(host, port)
+            return transport.connect(connectionConfig)
                     .whenComplete(thenOnException(throwable -> moveToDisconnectedState(throwable, connectionConfig)));
         } else {
             return FutureUtils.getFailedFuture(new AlreadyConnectedException("Door is already connected!"));
         }
+    }
+
+    public CompletionStage<Void> connect(@NotNull String host, int port, Protocol protocol) {
+        return connect(new ConnectionConfig(host, port, protocol));
     }
 
     /**
@@ -81,129 +80,83 @@ public class DoorClient implements Pinger.Sender {
      *
      * @return true if socket was disconnected by this call, false if socket was already disconnected
      */
-    private boolean moveToDisconnectedState(Throwable reason, IConnectionConfig connectionConfig) {
-
-        State previousState = state;
+    private boolean moveToDisconnectedState(Throwable reason, ConnectionConfig connectionConfig) {
 
         final boolean previouslyDisconnected = isDisconnected();
 
         if (!previouslyDisconnected) {
             state = State.DISCONNECTED;
             pinger.stop();
-            if (_transport != null) {
+            if (transport != null) {
                 if (connectionConfig == null) {
-                    connectionConfig = _transport.getConnectionConfig();
+                    connectionConfig = transport.getConnectionConfig();
                 }
-                _transport.close(reason.getMessage());
-                _transport.clearListener();
-                _transport = null;
+                transport.close(reason.getMessage());
+                transport.clearListener();
+                transport = null;
             }
-        }
-
-        if (previousState == State.CONNECTED_AUTHENTICATION_PENDING ||
-                previousState == State.CONNECTED_AUTHENTICATED) {
             fireOnDisconnected(reason, connectionConfig);
         }
+
         return !previouslyDisconnected;
     }
 
     @SuppressWarnings("UnusedDeclaration")
     public boolean isConnected() {
-        return state == State.CONNECTED_AUTHENTICATION_PENDING ||
-                state == State.CONNECTED_AUTHENTICATED;
-    }
-
-    public boolean isAuthenticated() {
-        return state == State.CONNECTED_AUTHENTICATED;
+        return state == State.CONNECTED;
     }
 
     public boolean isDisconnected() {
         return state == State.DISCONNECTED;
     }
 
-    public ListenableFuture<Void> sendPacket(@NotNull final String connectionId,
-                                             @NotNull final String envelopeBody,
-                                             @NotNull final DoorEnvelopeType doorEnvelopeType) {
+    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
+                                            @NotNull final String envelopeBody,
+                                            @NotNull final DoorEnvelopeType doorEnvelopeType) {
         return sendPacket(connectionId, envelopeBody, doorEnvelopeType, null);
     }
 
-    public ListenableFuture<Void> sendPacket(@NotNull final String connectionId,
-                                             @NotNull final String envelopeBody,
-                                             @NotNull final DoorEnvelopeType doorEnvelopeType,
-                                             @Nullable final String doorEnvelopeMethod) {
+    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
+                                            @NotNull final String envelopeBody,
+                                            @NotNull final DoorEnvelopeType doorEnvelopeType,
+                                            @Nullable final String doorEnvelopeMethod) {
         return sendPacket(connectionId, envelopeBody, doorEnvelopeType, doorEnvelopeMethod, null);
     }
 
-    public ListenableFuture<Void> sendPacket(@NotNull final String connectionId,
-                                             @NotNull final String envelopeBody,
-                                             @NotNull final DoorEnvelopeType doorEnvelopeType,
-                                             @Nullable final String doorEnvelopeMethod,
-                                             @Nullable final String flowId) {
-        final SettableFuture<Void> future = SettableFuture.create();
-        DoorEnvelope envelope;
+    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
+                                            @NotNull final String envelopeBody,
+                                            @NotNull final DoorEnvelopeType doorEnvelopeType,
+                                            @Nullable final String doorEnvelopeMethod,
+                                            @Nullable final String flowId) {
         DoorEnvelope.Type type = DoorEnvelope.Type.getEnum(doorEnvelopeType);
-        envelope = new DoorEnvelope(type, envelopeBody, connectionId, null,
+        DoorEnvelope envelope = new DoorEnvelope(type, envelopeBody, connectionId, null,
                 doorEnvelopeMethod, flowId);
-        Futures.addCallback(sendMessage(envelope), new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                future.set(result);
-            }
-
-            @Override
-            public void onFailure(@NotNull Throwable t) {
-                future.setException(t);
-            }
-        });
-        return future;
+        return sendMessage(envelope);
     }
 
     @SuppressWarnings("UnusedDeclaration")
-    public ListenableFuture<String> sendStart(@NotNull final String entity,
-                                              @NotNull final String startPayload,
-                                              @Nullable final String flowId) {
-        final SettableFuture<String> future = SettableFuture.create();
+    public CompletionStage<Void> sendStart(@NotNull final String entity,
+                                           @NotNull final String startPayload,
+                                           @Nullable final String flowId) {
         final String doorConnectionId = entity + '_' + UUID.randomUUID();
         DoorEnvelope message = new DoorStartEnvelope(DoorEnvelope.Type.OMS_AUTH, startPayload,
                 doorConnectionId, entity, doorConfig.getUaInfo(), doorConfig.isTraceEnabled(),
                 flowId);
-        Futures.addCallback(sendMessage(message), new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                future.set(doorConnectionId);
-            }
 
-            @Override
-            public void onFailure(@NotNull Throwable t) {
-                future.setException(t);
-            }
-        });
-        return future;
+        return sendMessage(message);
     }
 
     @SuppressWarnings("UnusedDeclaration")
-    public ListenableFuture<Void> sendEnd(@NotNull final String connectionId,
-                                          @NotNull final String endXml) {
-        final SettableFuture<Void> future = SettableFuture.create();
+    public CompletionStage<Void> sendEnd(@NotNull final String connectionId,
+                                         @NotNull final String endXml) {
         DoorEnvelope message = new DoorEnvelope(DoorEnvelope.Type.END, endXml, connectionId,
                 null, null, null);
-        Futures.addCallback(sendMessage(message), new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                future.set(result);
-            }
-
-            @Override
-            public void onFailure(@NotNull Throwable t) {
-                future.setException(t);
-            }
-        });
-        return future;
+        return sendMessage(message);
     }
 
     @SuppressWarnings("UnusedDeclaration")
     public void addListener(DoorListener listener) {
-        _listeners.add(listener);
+        listeners.add(listener);
     }
 
     @Override
@@ -217,21 +170,14 @@ public class DoorClient implements Pinger.Sender {
     }
 
     /*privates*/
-    private ListenableFuture<Void> sendMessage(final DoorEnvelope doorEnvelope) {
-        final SettableFuture<Void> future = SettableFuture.create();
-        if (_transport != null) {
-            try {
-                String json = doorEnvelope.toJson();
-                logger.log("||>>" + json);
-                _transport.send(json.getBytes());
-                future.set(null);
-            } catch (IOException e) {
-                future.setException(e);
-            }
+    private CompletionStage<Void> sendMessage(final DoorEnvelope doorEnvelope) {
+        if (transport != null) {
+            String json = doorEnvelope.toJson();
+            logger.log("||>>" + json);
+            return transport.send(json.getBytes());
         } else {
-            future.setException(new Throwable("Transport is null"));
+            return FutureUtils.getFailedFuture(new Throwable("Transport is null"));
         }
-        return future;
     }
 
     private Transport.SocketHandlerEventListener getTransportListener() {
@@ -279,16 +225,12 @@ public class DoorClient implements Pinger.Sender {
             }
 
             @Override
-            public void onReady(final boolean isAuthenticated) {
-                if (isAuthenticated) {
-                    state = State.CONNECTED_AUTHENTICATED;
-                } else {
-                    state = State.CONNECTED_AUTHENTICATION_PENDING;
-                }
+            public void onReady(final boolean isConnected) {
+                state = State.CONNECTED;
                 logger.log("transport connected. started pinger");
                 pinger.start();
                 isConnectionReady.complete(null);
-                fireOnConnected(isAuthenticated);
+                fireOnConnected(isConnected);
             }
 
             @Override
@@ -311,7 +253,7 @@ public class DoorClient implements Pinger.Sender {
         final Optional<DoorEnvelopeType> envelopeTypeOptional = DoorEnvelope.Type.getDoorEnvelopeTypeEnum(type);
         if (envelopeTypeOptional.isPresent()) {
             final DoorEnvelopeType doorEnvelopeType = envelopeTypeOptional.get();
-            for (DoorListener l : _listeners) {
+            for (DoorListener l : listeners) {
                 l.onBytesReceived(connectionId, doorEnvelopeType, data);
             }
         } else {
@@ -320,37 +262,37 @@ public class DoorClient implements Pinger.Sender {
         }
     }
 
-    private void fireOnConnected(boolean isAuthenticated) {
-        for (DoorListener l : _listeners) {
-            l.onConnected(isAuthenticated);
+    private void fireOnConnected(boolean isConnected) {
+        for (DoorListener l : listeners) {
+            l.onConnected(isConnected);
         }
     }
 
-    private void fireOnDisconnected(Throwable reason, IConnectionConfig connectionConfig) {
-        for (DoorListener l : _listeners) {
+    private void fireOnDisconnected(Throwable reason, ConnectionConfig connectionConfig) {
+        for (DoorListener l : listeners) {
             l.onDisconnected(reason, connectionConfig);
         }
     }
 
     private void fireOnAlert(String msg) {
-        for (DoorListener l : _listeners) {
+        for (DoorListener l : listeners) {
             l.onAlert(msg);
         }
     }
 
     private void fireOnEndReceived(String connectionId, String reason) {
-        for (DoorListener l : _listeners) {
+        for (DoorListener l : listeners) {
             l.onEndReceived(connectionId, reason);
         }
     }
 
     private void fireOnErrorReceived(String connectionId, String reason) {
-        for (DoorListener l : _listeners) {
+        for (DoorListener l : listeners) {
             l.onErrorReceived(connectionId, reason);
         }
     }
 
     private enum State {
-        DISCONNECTED, CONNECTING, CONNECTED_AUTHENTICATION_PENDING, CONNECTED_AUTHENTICATED
+        DISCONNECTED, CONNECTING, CONNECTED
     }
 }

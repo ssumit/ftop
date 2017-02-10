@@ -10,7 +10,7 @@ public interface Socket {
 
     CompletionStage<Void> connect();
 
-    CompletionStage<Void> send(@NotNull byte[] payload) throws IOException;
+    CompletionStage<Void> send(@NotNull byte[] payload);
 
     CompletionStage<Void> close(@NotNull String reason);
 
