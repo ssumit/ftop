@@ -4,7 +4,7 @@ import com.google.common.base.Strings;
 import olympus.common.JID;
 import org.jetbrains.annotations.NotNull;
 
-public class Credential implements Cloneable {
+public class Credential {
     private final JID jid;
     private final String authData;
 

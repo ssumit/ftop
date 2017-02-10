@@ -43,8 +43,6 @@ public class DoorClient implements Pinger.Sender {
 
     /**
      * Asynchronous call to connect to door
-     * <p>
-     * If already connected then AlreadyConnectedException is set in the future.
      */
     @SuppressWarnings("UnusedDeclaration")
     public CompletionStage<Void> connect(@NotNull ConnectionConfig connectionConfig) {
@@ -57,7 +55,7 @@ public class DoorClient implements Pinger.Sender {
             return transport.connect(connectionConfig)
                     .whenComplete(thenOnException(throwable -> moveToDisconnectedState(throwable, connectionConfig)));
         } else {
-            return FutureUtils.getFailedFuture(new AlreadyConnectedException("Door is already connected!"));
+            return CompletableFuture.completedFuture(null);
         }
     }
 

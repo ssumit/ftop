@@ -31,9 +31,6 @@ public class AuthPacket {
         checkState(validateFields());
     }
 
-    AuthPacket() {
-    }
-
     private boolean validateFields() {
         return !Strings.isNullOrEmpty(this._userJid) &&
                 !Strings.isNullOrEmpty(this._authData) &&
