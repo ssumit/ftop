@@ -64,17 +64,14 @@ public class DoorClient implements Pinger.Sender {
     }
 
     /**
-     * @return true if socket was not disconnected
+     * @return true if socket was disconnected by this call, false if socket was already disconnected
      */
-    public SettableFuture<Boolean> disconnect(final String reason) {
+    public CompletionStage<Boolean> disconnect(final String reason) {
         logger.log("Inside disconnect with reason:" + reason);
-        final SettableFuture<Boolean> future = SettableFuture.create();
-        future.set(moveToDisconnectedState(new Exception(reason), null));
-        return future;
+        return CompletableFuture.completedFuture(moveToDisconnectedState(new Exception(reason), null));
     }
 
     /**
-     * This method should only be run in _executor thread
      *
      * @return true if socket was disconnected by this call, false if socket was already disconnected
      */

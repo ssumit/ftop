@@ -12,6 +12,8 @@ public class UserClientTest {
         UserClient userClient = new UserClient(new JID("go.to", "apollo", "64vkt615oooyyy1y"), "r4hh5u2hrdvay525y5dharaa2dv55r4a");
         userClient
                 .connect()
-                .thenCompose(UserClient::authenticate).toCompletableFuture().get();
+                .thenCompose(UserClient::authenticate)
+                .thenCompose(UserClient::disconnect)
+                .toCompletableFuture().get();
     }
 }

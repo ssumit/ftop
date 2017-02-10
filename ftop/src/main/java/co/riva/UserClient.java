@@ -73,7 +73,20 @@ public class UserClient {
     }
 
     public CompletionStage<UserClient> connect() {
-        return doorClient.connect(DOOR_HOST, DOOR_PORT, Protocol.TLS)
+        CompletableFuture<Void> response = new CompletableFuture<>();
+        executorService.submit(() -> doorClient.connect(DOOR_HOST, DOOR_PORT, Protocol.TLS)
+                .thenAccept(response::complete)
+                .whenComplete(thenOnException(response::completeExceptionally)));
+        return response
+                .thenApply(__ -> UserClient.this);
+    }
+
+    public CompletionStage<UserClient> disconnect() {
+        CompletableFuture<Boolean> response = new CompletableFuture<>();
+        executorService.submit(() -> doorClient.disconnect("explicitly disconnect called")
+                .thenAccept(response::complete)
+                .whenComplete(thenOnException(response::completeExceptionally)));
+        return response
                 .thenApply(__ -> UserClient.this);
     }
 

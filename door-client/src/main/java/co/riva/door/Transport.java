@@ -114,10 +114,8 @@ class Transport {
 
     public void close(@NotNull String reason) {
         if (_socket != null) {
-            System.out.println("tt3");
             _socket.close(reason);
             _socket = null;
-            fireOnShutdown(new Exception("Socket closed: " + reason));
         }
     }
 
