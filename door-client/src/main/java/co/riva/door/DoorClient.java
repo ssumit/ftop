@@ -4,7 +4,6 @@ import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.Protocol;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
-import com.google.common.util.concurrent.SettableFuture;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,6 +15,7 @@ import java.util.concurrent.*;
 import co.riva.door.config.DoorConfig;
 
 import static co.riva.door.FutureUtils.thenOnException;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 //Not ThreadSafe
 public class DoorClient implements Pinger.Sender {
@@ -31,6 +31,7 @@ public class DoorClient implements Pinger.Sender {
     private Transport transport;
     private State state;
     private CompletableFuture<Void> isConnectionReady;
+    private String connectionID;
 
     public DoorClient(@NotNull DoorConfig doorConfig,
                       @NotNull DoorLogger doorLogger) {
@@ -72,7 +73,6 @@ public class DoorClient implements Pinger.Sender {
     }
 
     /**
-     *
      * @return true if socket was disconnected by this call, false if socket was already disconnected
      */
     private boolean moveToDisconnectedState(Throwable reason, ConnectionConfig connectionConfig) {
@@ -105,26 +105,24 @@ public class DoorClient implements Pinger.Sender {
         return state == State.DISCONNECTED;
     }
 
-    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
-                                            @NotNull final String envelopeBody,
+    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
                                             @NotNull final DoorEnvelopeType doorEnvelopeType) {
-        return sendPacket(connectionId, envelopeBody, doorEnvelopeType, null);
+        return sendPacket(envelopeBody, doorEnvelopeType, null);
     }
 
-    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
-                                            @NotNull final String envelopeBody,
+    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
                                             @NotNull final DoorEnvelopeType doorEnvelopeType,
                                             @Nullable final String doorEnvelopeMethod) {
-        return sendPacket(connectionId, envelopeBody, doorEnvelopeType, doorEnvelopeMethod, null);
+        return sendPacket(envelopeBody, doorEnvelopeType, doorEnvelopeMethod, UUID.randomUUID().toString());
     }
 
-    public CompletionStage<Void> sendPacket(@NotNull final String connectionId,
-                                            @NotNull final String envelopeBody,
+    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
                                             @NotNull final DoorEnvelopeType doorEnvelopeType,
                                             @Nullable final String doorEnvelopeMethod,
                                             @Nullable final String flowId) {
+        checkNotNull(connectionID);
         DoorEnvelope.Type type = DoorEnvelope.Type.getEnum(doorEnvelopeType);
-        DoorEnvelope envelope = new DoorEnvelope(type, envelopeBody, connectionId, null,
+        DoorEnvelope envelope = new DoorEnvelope(type, envelopeBody, connectionID, null,
                 doorEnvelopeMethod, flowId);
         return sendMessage(envelope);
     }
@@ -133,9 +131,9 @@ public class DoorClient implements Pinger.Sender {
     public CompletionStage<Void> sendStart(@NotNull final String entity,
                                            @NotNull final String startPayload,
                                            @Nullable final String flowId) {
-        final String doorConnectionId = entity + '_' + UUID.randomUUID();
+        connectionID = entity + '_' + UUID.randomUUID();
         DoorEnvelope message = new DoorStartEnvelope(DoorEnvelope.Type.OMS_AUTH, startPayload,
-                doorConnectionId, entity, doorConfig.getUaInfo(), doorConfig.isTraceEnabled(),
+                connectionID, entity, doorConfig.getUaInfo(), doorConfig.isTraceEnabled(),
                 flowId);
 
         return sendMessage(message);
@@ -210,7 +208,6 @@ public class DoorClient implements Pinger.Sender {
                     case DEBUG:
                         logger.log("Debug data: " + doorEnvelope.toJson());
                         break;
-                    case OMS_PACKET:
                     case OMS_AUTH:
                     case OMS_MESSAGE:
                     case UNKNOWN:

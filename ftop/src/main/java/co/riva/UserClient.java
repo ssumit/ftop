@@ -7,6 +7,7 @@ import co.riva.door.DoorListener;
 import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
+import co.riva.message.MessageMethod;
 import olympus.common.JID;
 
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +22,7 @@ public class UserClient {
     private DoorClient doorClient;
     private final AuthHelper authHelper;
     private final ScheduledExecutorService executorService;
+    private MessageListener listener;
     private static final String DOOR_HOST = "doorstaging.handler.talk.to";
     private static final int DOOR_PORT = 995;
 
@@ -33,7 +35,11 @@ public class UserClient {
         doorClient.addListener(new DoorListener() {
             @Override
             public void onBytesReceived(String id, DoorEnvelopeType type, byte[] data) {
-                System.out.println("Data : " + new String(data));
+                String jsonString = new String(data);
+                System.out.println("Data : " + jsonString);
+                if (type.equals(DoorEnvelopeType.O_MESSAGE) && listener != null) {
+                    listener.onNewMessage(jsonString);
+                }
             }
 
             @Override
@@ -63,6 +69,10 @@ public class UserClient {
         });
     }
 
+    public void setListener(MessageListener listener) {
+        this.listener = listener;
+    }
+
     public CompletionStage<UserClient> authenticate() {
         CompletableFuture<Void> response = new CompletableFuture<>();
         executorService.submit(() -> authHelper.authenticate()
@@ -90,7 +100,11 @@ public class UserClient {
                 .thenApply(__ -> UserClient.this);
     }
 
-    public CompletionStage<String> request(String request) {
-        return null;
+    public CompletionStage<Void> message(String message, MessageMethod methodName) {
+        return doorClient.sendPacket(message, DoorEnvelopeType.O_MESSAGE, methodName.getMethodName());
+    }
+
+    public interface MessageListener {
+        void onNewMessage(String message);
     }
 }

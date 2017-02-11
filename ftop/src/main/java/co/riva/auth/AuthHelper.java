@@ -58,11 +58,13 @@ public class AuthHelper {
             public void onBytesReceived(String id, DoorEnvelopeType type, byte[] data) {
                 String response = new String(data);
                 System.out.println("Data : " + response);
-                if (!isAuthenticated.isDone()) {
-                    if (isAuthSuccess(response)) {
-                        isAuthenticated.complete(null);
-                    } else if (isAuthFailure(response)) {
-                        isAuthenticated.completeExceptionally(new RuntimeException("Auth failure: " + data));
+                if (type.equals(DoorEnvelopeType.O_AUTH)) {
+                    if (!isAuthenticated.isDone()) {
+                        if (isAuthSuccess(response)) {
+                            isAuthenticated.complete(null);
+                        } else if (isAuthFailure(response)) {
+                            isAuthenticated.completeExceptionally(new RuntimeException("Auth failure: " + data));
+                        }
                     }
                 }
             }

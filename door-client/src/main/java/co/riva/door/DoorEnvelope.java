@@ -18,26 +18,27 @@ class DoorEnvelope {
     private static final String METHOD = "method";
     private static final String FLOW_ID = "flowId";
     @Nullable
-    private final String _body;
+    private final String body;
     @Nullable
-    private final String _id;
+    private final String id;
     @NotNull
-    private final Type _type;
+    private final Type type;
     @Nullable
-    private final String _method;
+    private final String method;
+
     @Nullable
-    private final String _info;
+    private final String info;
     @Nullable
-    private final String _flowId;
+    private final String flowid;
 
     public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
                         @Nullable String info, @Nullable String method, @Nullable String flowId) {
-        _body = body;
-        _id = id;
-        _type = type;
-        _info = info;
-        _method = method;
-        _flowId = flowId;
+        this.body = body;
+        this.id = id;
+        this.type = type;
+        this.info = info;
+        this.method = method;
+        flowid = flowId;
     }
 
     public static DoorEnvelope fromJson(String json) {
@@ -59,12 +60,12 @@ class DoorEnvelope {
     protected JSONObject getJsonObject() {
         JSONObject jsonObject = new JSONObject();
         try {
-            jsonObject.putOpt(BODY, _body);
-            jsonObject.putOpt(ID, _id);
-            jsonObject.put(TYPE, _type);
-            jsonObject.putOpt(INFO, _info);
-            jsonObject.putOpt(METHOD, _method);
-            jsonObject.putOpt(FLOW_ID, _flowId);
+            jsonObject.putOpt(BODY, body);
+            jsonObject.putOpt(ID, id);
+            jsonObject.put(TYPE, type);
+            jsonObject.putOpt(INFO, info);
+            jsonObject.putOpt(METHOD, method);
+            jsonObject.putOpt(FLOW_ID, flowid);
         } catch (JSONException e) {
 
         }
@@ -73,38 +74,37 @@ class DoorEnvelope {
 
     @Nullable
     public String getBody() {
-        return _body;
+        return body;
     }
 
     @NotNull
     public Type getType() {
-        return _type;
+        return type;
     }
 
     @Nullable
     public String getId() {
-        return _id;
+        return id;
     }
 
     @Nullable
     public String getInfo() {
-        return _info;
+        return info;
     }
 
     @Nullable
     public String getMethod() {
-        return _method;
+        return method;
     }
 
     @Nullable
     public String getFlowId() {
-        return _flowId;
+        return flowid;
     }
 
     public enum Type {
-        PING("ping"), PONG("pong"), END("s:end"), OMS_PACKET("o:packet"), DEBUG(
-                "debugInfo"), ERROR("error"), OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN(
-                "unknown");
+        PING("ping"), PONG("pong"), END("s:end"), DEBUG("debugInfo"), ERROR("error"),
+        OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN("unknown");
 
         private final String _value;
 
@@ -130,9 +130,6 @@ class DoorEnvelope {
                 case O_MESSAGE:
                     type = OMS_MESSAGE;
                     break;
-                case O_PACKET:
-                    type = OMS_PACKET;
-                    break;
                 default:
                     throw new RuntimeException("unsupported doorEnvelopeType: " + doorEnvelopeType.name());
             }
@@ -148,9 +145,6 @@ class DoorEnvelope {
                         break;
                     case OMS_MESSAGE:
                         doorEnvelopeType = DoorEnvelopeType.O_MESSAGE;
-                        break;
-                    case OMS_PACKET:
-                        doorEnvelopeType = DoorEnvelopeType.O_PACKET;
                         break;
                 }
             }

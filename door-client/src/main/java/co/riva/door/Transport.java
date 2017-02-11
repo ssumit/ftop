@@ -17,7 +17,7 @@ class Transport {
     @NotNull
     private final FrameMaker _framingProtocol;
     @Nullable
-    private Socket _socket;
+    private Socket socket;
     @Nullable
     private SocketHandlerEventListener _listener;
 
@@ -38,9 +38,9 @@ class Transport {
     @Nullable
     public ConnectionConfig getConnectionConfig() {
         ConnectionConfig connectionConfig = null;
-        if (_socket != null) {
-            final String host = _socket.host();
-            final int port = _socket.port();
+        if (socket != null) {
+            final String host = socket.host();
+            final int port = socket.port();
             final Protocol protocol = Protocol.TLS;
             connectionConfig = new ConnectionConfig(host, port, protocol);
         }
@@ -48,14 +48,14 @@ class Transport {
     }
 
     public CompletionStage<Void> connect(@NotNull ConnectionConfig connectionConfig) {
-        if (_socket != null) {
+        if (socket != null) {
             return FutureUtils.getFailedFuture(new IllegalStateException("socket is not null before connecting"));
         }
         if (!connectionConfig.protocol().equals(Protocol.TLS)) {
             return FutureUtils.getFailedFuture(new UnsupportedOperationException("unsupported protocol"));
         }
-        _socket = new TLSSocket(connectionConfig.host(), connectionConfig.port(), getSocketListener());
-        return _socket.connect();
+        socket = new TLSSocket(connectionConfig.host(), connectionConfig.port(), getSocketListener());
+        return socket.connect();
     }
 
     @NotNull
@@ -108,19 +108,19 @@ class Transport {
     }
 
     public CompletionStage<Void> send(@NotNull byte[] data) {
-        checkNonNull(_socket);
-        return _socket.send(FrameMaker.frame(data));
+        checkNonNull(socket);
+        return socket.send(FrameMaker.frame(data));
     }
 
     public void close(@NotNull String reason) {
-        if (_socket != null) {
-            _socket.close(reason);
-            _socket = null;
+        if (socket != null) {
+            socket.close(reason);
+            socket = null;
         }
     }
 
     public boolean isConnected() {
-        return _socket != null && _socket.isConnected();
+        return socket != null && socket.isConnected();
     }
 
     private void fireOnMessage(byte[] buffer) {
