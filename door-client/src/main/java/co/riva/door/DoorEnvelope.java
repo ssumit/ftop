@@ -19,9 +19,6 @@ class DoorEnvelope {
     @NotNull
     @SerializedName("type")
     private final String type;
-    @Nullable //in case of ping pong can be null
-    @SerializedName("to")
-    private final String to;
     @Nullable
     @SerializedName("method")
     private final String method;
@@ -34,18 +31,12 @@ class DoorEnvelope {
 
     public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
                         @Nullable String info, @Nullable String method, @Nullable String flowId) {
-        this(type, body, id, info, method, flowId, null);
-    }
-
-    public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
-                        @Nullable String info, @Nullable String method, @Nullable String flowId, String to) {
         this.body = body;
         this.id = id;
         this.type = type.getValue();
         this.info = info;
         this.method = method;
         this.flowid = flowId;
-        this.to = to;
     }
 
     @Nullable
@@ -80,7 +71,7 @@ class DoorEnvelope {
 
     public enum Type {
         PING("ping"), PONG("pong"), END("s:end"), DEBUG("debugInfo"), ERROR("error"),
-        OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN("unknown");
+        OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN("unknown"), O_REQUEST("o:request");
 
         private final String _value;
 
@@ -104,6 +95,9 @@ class DoorEnvelope {
                     type = OMS_AUTH;
                     break;
                 case O_MESSAGE:
+                    type = OMS_MESSAGE;
+                    break;
+                case O_REQUEST:
                     type = OMS_MESSAGE;
                     break;
                 default:

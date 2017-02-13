@@ -130,6 +130,15 @@ public class DoorClient implements Pinger.Sender {
         return sendMessage(envelope);
     }
 
+    public CompletionStage<Void> sendRequest(@NotNull final String envelopeBody,
+                                             @Nullable final String doorEnvelopeMethod,
+                                             @Nullable final String flowId) {
+        checkNotNull(connectionID);
+        DoorEnvelope envelope = new DoorEnvelope(DoorEnvelope.Type.O_REQUEST, envelopeBody, connectionID, null,
+                doorEnvelopeMethod, flowId);
+        return sendMessage(envelope);
+    }
+
     @SuppressWarnings("UnusedDeclaration")
     public CompletionStage<Void> sendStart(@NotNull final String entity,
                                            @NotNull final String startPayload,

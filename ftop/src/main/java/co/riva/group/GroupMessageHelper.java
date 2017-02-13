@@ -2,15 +2,13 @@ package co.riva.group;
 
 import co.riva.UserClient;
 import co.riva.door.DoorClient;
-import co.riva.door.DoorEnvelopeType;
 import com.google.gson.Gson;
-import olympus.common.JID;
+import com.google.gson.annotations.SerializedName;
 import olympus.flock.messages.kronos.GroupConfiguration;
 import olympus.flock.messages.kronos.GroupType;
 import olympus.flock.messages.kronos.ProfileInfo;
 import olympus.kronos.client.requests.CreateGroupRequest;
 import olympus.message.types.Request;
-import olympus.message.types.ResponseListener;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,8 +29,20 @@ public class GroupMessageHelper implements UserClient.RequestListener {
         groupRequest.to().setServiceName("groups");
         String requestID = UUID.randomUUID().toString();
         System.out.println(requestID);
-        doorClient.sendPacket(gson.toJson(groupRequest), DoorEnvelopeType.O_MESSAGE, "createGroup", requestID);
+        doorClient.sendRequest(gson.toJson(new Req(groupRequest.payload(), "12@groups.go.to")), "createGroup", UUID.randomUUID().toString());
         return fu;
+    }
+
+    public static class Req<T> {
+        @SerializedName("payload")
+        final T t;
+        @SerializedName("to")
+        final String to;
+
+        public Req(T t, String to) {
+            this.t = t;
+            this.to = to;
+        }
     }
 
     private Request<CreateGroupRequest> createGroupRequest() {
