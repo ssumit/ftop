@@ -13,6 +13,10 @@ public class UserClientTest {
         userClient
                 .connect()
                 .thenCompose(UserClient::authenticate)
+                .thenCompose(__ -> {
+                    return userClient.getGroupMessageHelper().createGroup()
+                            .thenApply(___ -> userClient);
+                })
                 .thenCompose(UserClient::disconnect)
                 .toCompletableFuture().get();
     }

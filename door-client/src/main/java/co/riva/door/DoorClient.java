@@ -5,6 +5,7 @@ import co.riva.door.config.Protocol;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
+import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,6 +33,7 @@ public class DoorClient implements Pinger.Sender {
     private State state;
     private CompletableFuture<Void> isConnectionReady;
     private String connectionID;
+    private final Gson gson;
 
     public DoorClient(@NotNull DoorConfig doorConfig,
                       @NotNull DoorLogger doorLogger) {
@@ -40,6 +42,7 @@ public class DoorClient implements Pinger.Sender {
         pinger = new Pinger(this, doorLogger, Executors.newSingleThreadScheduledExecutor());
         state = State.DISCONNECTED;
         this.doorConfig = doorConfig;
+        this.gson = new Gson();
     }
 
     /**
@@ -165,7 +168,7 @@ public class DoorClient implements Pinger.Sender {
     /*privates*/
     private CompletionStage<Void> sendMessage(final DoorEnvelope doorEnvelope) {
         if (transport != null) {
-            String json = doorEnvelope.toJson();
+            String json = gson.toJson(doorEnvelope);
             logger.log("||>>" + json);
             return transport.send(json.getBytes());
         } else {
@@ -177,12 +180,13 @@ public class DoorClient implements Pinger.Sender {
         return new Transport.SocketHandlerEventListener() {
             @Override
             public void onMessage(byte... msg) {
-                final DoorEnvelope doorEnvelope = DoorEnvelope.fromJson(new String(msg));
+                String json = new String(msg);
+                final DoorEnvelope doorEnvelope = gson.fromJson(json, DoorEnvelope.class);
                 if (doorEnvelope == null) {
-                    logger.log("Ignoring stanza from door: " + new String(msg));
+                    logger.log("Ignoring stanza from door: " + json);
                     return;
                 }
-                logger.log("||<<" + doorEnvelope.toJson());
+                logger.log("||<<" + gson.toJson(doorEnvelope));
                 handleRecievedEnvelope(doorEnvelope);
             }
 
@@ -206,7 +210,7 @@ public class DoorClient implements Pinger.Sender {
                     case PING://ignore received ping stanza
                         break;
                     case DEBUG:
-                        logger.log("Debug data: " + doorEnvelope.toJson());
+                        logger.log("Debug data: " + gson.toJson(doorEnvelope));
                         break;
                     case OMS_AUTH:
                     case OMS_MESSAGE:

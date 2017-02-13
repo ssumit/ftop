@@ -3,73 +3,49 @@ package co.riva.door;
 import com.google.common.base.Optional;
 
 
+import com.google.gson.annotations.SerializedName;
 import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 @Immutable
 class DoorEnvelope {
-    private static final String BODY = "body";
-    private static final String ID = "id";
-    private static final String TYPE = "type";
-    private static final String INFO = "info";
-    private static final String METHOD = "method";
-    private static final String FLOW_ID = "flowId";
     @Nullable
+    @SerializedName("body")
     private final String body;
     @Nullable
+    @SerializedName("id")
     private final String id;
     @NotNull
-    private final Type type;
+    @SerializedName("type")
+    private final String type;
+    @Nullable //in case of ping pong can be null
+    @SerializedName("to")
+    private final String to;
     @Nullable
+    @SerializedName("method")
     private final String method;
-
     @Nullable
+    @SerializedName("info")
     private final String info;
     @Nullable
+    @SerializedName("flowId")
     private final String flowid;
 
     public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
                         @Nullable String info, @Nullable String method, @Nullable String flowId) {
+        this(type, body, id, info, method, flowId, null);
+    }
+
+    public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
+                        @Nullable String info, @Nullable String method, @Nullable String flowId, String to) {
         this.body = body;
         this.id = id;
-        this.type = type;
+        this.type = type.getValue();
         this.info = info;
         this.method = method;
-        flowid = flowId;
-    }
-
-    public static DoorEnvelope fromJson(String json) {
-        try {
-            JSONObject jsonObject = new JSONObject(json);
-            return new DoorEnvelope(Type.getEnum(jsonObject.getString(TYPE)),
-                    jsonObject.optString(BODY), jsonObject.optString(ID), jsonObject.optString(INFO),
-                    jsonObject.optString(METHOD), jsonObject.optString(FLOW_ID));
-        } catch (JSONException e) {
-            return null;
-        }
-    }
-
-    public String toJson() {
-        JSONObject jsonObject = getJsonObject();
-        return jsonObject.toString();
-    }
-
-    protected JSONObject getJsonObject() {
-        JSONObject jsonObject = new JSONObject();
-        try {
-            jsonObject.putOpt(BODY, body);
-            jsonObject.putOpt(ID, id);
-            jsonObject.put(TYPE, type);
-            jsonObject.putOpt(INFO, info);
-            jsonObject.putOpt(METHOD, method);
-            jsonObject.putOpt(FLOW_ID, flowid);
-        } catch (JSONException e) {
-
-        }
-        return jsonObject;
+        this.flowid = flowId;
+        this.to = to;
     }
 
     @Nullable
@@ -79,7 +55,7 @@ class DoorEnvelope {
 
     @NotNull
     public Type getType() {
-        return type;
+        return Type.getEnum(type);
     }
 
     @Nullable
