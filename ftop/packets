@@ -1,0 +1,13 @@
+Examples:
+Auth Request:
+{"ua-info":"device-type\u003dservice;os\u003dLinux;os-version\u003d14.04;app-name\u003dgoto;app-version\u003d0.1-SNAPSHOT;timezone\u003d+05:30","entity":"64vkt615oooyyy1y@go.to","trace":true,"body":"{\"userJid\":\"64vkt615oooyyy1y@go.to\",\"authVersion\":\"1.0\",\"serverVersion\":\"4.0\",\"streamId\":\"64vkt615oooyyy1y@go.to_8a20dede-e057-4a14-ad8f-cf5dd3d15817\",\"authData\":\"r4hh5u2hrdvay525y5dharaa2dv55r4a\"}","id":"64vkt615oooyyy1y@go.to_64d60211-0f0a-4907-a923-9430731adb1d","type":"o:auth","flowId":"a98cb5fe-ea32-4089-aaf9-78f4bfd085bc"}
+
+SuccessFul Auth Response
+{"responseType":"success","sessionJid":"64vkt615oooyyy1y@go.to/go.to_Linux_14.04_TKxztU","sessionId":"eaba2d36","userSettings":{"muteStatus":{"onMute":false,"mutedFor":0}},"retryAfter":0}
+
+Invalid Stream Response for a request containing invalid connectionID
+{"body":"invalid-stream-id","id":"64vkt615oooyyy1y@go.to_64d60211-0f0a-4907-a923-9430731adb1dc7751c34-6869-4deb-b058-f348d584d402","type":"error"}
+
+CreateGroup API
+request: {"body":"{\"payload\":{\"config\":{\"type\":\"close\",\"privileges\":{},\"loudNotification\":{}},\"profile\":{\"name\":\"name\",\"description\":\"description\"},\"members\":[]},\"to\":\"123@groups.go.to\"}","id":"64vkt615oooyyy1y@go.to_2e3574a5-2a5e-4a40-99b1-217b7b8ccb95","type":"o:request","method":"createGroup","flowId":"bb633aaf-2a3e-46e0-80ae-74e81f5ac35a"}
+response: {"body":"{\"responseType\":\"success\",\"groupVersion\":1,\"groupJID\":\"f8613825d964480982aeba46bed4c72e@groups.go.to\",\"profile\":{\"name\":\"Sumit.s \",\"avatar\":\"https://g.flockusercontent.com/default-group-4.png\",\"unnamed\":true},\"config\":{\"type\":\"close\",\"privileges\":{},\"loudNotification\":{}},\"members\":[{\"jid\":\"64vkt615oooyyy1y@go.to\",\"affiliation\":\"moderator\",\"status\":\"200\"}],\"from\":\"123@groups.go.to\"}","id":"64vkt615oooyyy1y@go.to_2e3574a5-2a5e-4a40-99b1-217b7b8ccb95","type":"o:response","method":"createGroup"}

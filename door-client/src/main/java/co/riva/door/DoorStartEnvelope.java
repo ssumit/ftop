@@ -15,9 +15,8 @@ public class DoorStartEnvelope extends DoorEnvelope {
     private final boolean enableTrace;
 
     public DoorStartEnvelope(@NotNull Type type, @Nullable String body, @NotNull String id,
-                             @NotNull String entity, @NotNull String uaInfo, boolean enableTrace,
-                             @Nullable String flowId) {
-        super(type, body, id, null, null, flowId);
+                             @NotNull String entity, @NotNull String uaInfo, boolean enableTrace) {
+        super(type, body, id, null, null);
         this.entity = entity;
         this.uainfo = uaInfo;
         this.enableTrace = enableTrace;

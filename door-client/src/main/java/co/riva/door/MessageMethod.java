@@ -1,4 +1,4 @@
-package co.riva.message;
+package co.riva.door;
 
 public enum MessageMethod {
     INDIVIDUAL_CHAT("chatMessage"),

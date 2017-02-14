@@ -4,11 +4,11 @@ import co.riva.auth.AuthHelper;
 import co.riva.door.DoorClient;
 import co.riva.door.DoorEnvelopeType;
 import co.riva.door.DoorListener;
+import co.riva.auth.SimpleDoorClient;
 import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
 import co.riva.group.GroupMessageHelper;
-import co.riva.message.MessageMethod;
 import olympus.common.JID;
 
 import java.util.concurrent.CompletableFuture;
@@ -20,8 +20,7 @@ import static co.riva.door.FutureUtils.thenOnException;
 
 public class UserClient {
 
-    private DoorClient doorClient;
-    private final AuthHelper authHelper;
+    private final SimpleDoorClient doorClient;
     private final ScheduledExecutorService executorService;
     private MessageListener listener;
     private final GroupMessageHelper groupMessageHelper;
@@ -31,9 +30,7 @@ public class UserClient {
 
     public UserClient(JID userJID, String authToken) {
         this.executorService = Executors.newSingleThreadScheduledExecutor();
-        DoorConfig doorConfig = new DoorConfig(60000, true, "device-type=service;os=Linux;os-version=14.04;app-name=goto;app-version=0.1-SNAPSHOT;timezone=+05:30");
-        doorClient = new DoorClient(doorConfig, System.out::println);
-        authHelper = new AuthHelper(userJID, authToken, doorClient);
+        doorClient = new SimpleDoorClient(userJID, authToken);
         groupMessageHelper = new GroupMessageHelper(doorClient);
         doorClient.addListener(new DoorListener() {
             @Override
@@ -87,7 +84,8 @@ public class UserClient {
 
     public CompletionStage<UserClient> authenticate() {
         CompletableFuture<Void> response = new CompletableFuture<>();
-        executorService.submit(() -> authHelper.authenticate()
+        DoorConfig doorConfig = new DoorConfig(true, "device-type=service;os=Linux;os-version=14.04;app-name=goto;app-version=0.1-SNAPSHOT;timezone=+05:30");
+        executorService.submit(() -> doorClient.authenticate(doorConfig)
                 .thenAccept(response::complete)
                 .whenComplete(thenOnException(response::completeExceptionally)));
         return response
@@ -110,10 +108,6 @@ public class UserClient {
                 .whenComplete(thenOnException(response::completeExceptionally)));
         return response
                 .thenApply(__ -> UserClient.this);
-    }
-
-    public CompletionStage<Void> message(String message, MessageMethod methodName) {
-        return doorClient.sendPacket(message, DoorEnvelopeType.O_MESSAGE, methodName.getMethodName());
     }
 
     public interface MessageListener {

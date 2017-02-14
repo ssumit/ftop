@@ -1,7 +1,6 @@
 import co.riva.door.DoorClient;
 import co.riva.door.DoorEnvelopeType;
 import co.riva.door.DoorListener;
-import co.riva.door.config.DoorConfig;
 import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.Protocol;
 
@@ -14,8 +13,7 @@ public class DoorTest {
 
     public static void main(String[] args) throws IOException {
 
-        DoorConfig doorConfig = new DoorConfig(SOCKET_TIMEOUT_MILLIS, true, "test");
-        DoorClient client = new DoorClient(doorConfig, System.out::println);
+        DoorClient client = new DoorClient(System.out::println);
 
         client.addListener(new DoorListener() {
             @Override

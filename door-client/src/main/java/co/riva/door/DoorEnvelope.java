@@ -8,8 +8,10 @@ import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
+
 @Immutable
-class DoorEnvelope {
+public class DoorEnvelope {
     @Nullable
     @SerializedName("body")
     private final String body;
@@ -30,13 +32,13 @@ class DoorEnvelope {
     private final String flowid;
 
     public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
-                        @Nullable String info, @Nullable String method, @Nullable String flowId) {
+                        @Nullable String info, @Nullable String method) {
         this.body = body;
         this.id = id;
         this.type = type.getValue();
         this.info = info;
         this.method = method;
-        this.flowid = flowId;
+        this.flowid = UUID.randomUUID().toString();
     }
 
     @Nullable

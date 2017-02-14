@@ -1,9 +1,8 @@
 package co.riva.group;
 
 import co.riva.UserClient;
-import co.riva.door.DoorClient;
-import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
+import co.riva.door.RequestMethod;
+import co.riva.auth.SimpleDoorClient;
 import olympus.flock.messages.kronos.GroupConfiguration;
 import olympus.flock.messages.kronos.GroupType;
 import olympus.flock.messages.kronos.ProfileInfo;
@@ -16,37 +15,23 @@ import java.util.concurrent.CompletionStage;
 
 public class GroupMessageHelper implements UserClient.RequestListener {
     CompletableFuture<Void> fu = new CompletableFuture<>();
-    private final DoorClient doorClient;
-    private final Gson gson;
+    private final SimpleDoorClient doorClient;
 
-    public GroupMessageHelper(DoorClient doorClient) {
+    public GroupMessageHelper(SimpleDoorClient doorClient) {
         this.doorClient = doorClient;
-        gson = new Gson();
     }
 
     public CompletionStage<Void> createGroup() {
         Request<CreateGroupRequest> groupRequest = createGroupRequest();
         groupRequest.to().setServiceName("groups");
-        String requestID = UUID.randomUUID().toString();
-        System.out.println(requestID);
-        doorClient.sendRequest(gson.toJson(new Req(groupRequest.payload(), "12@groups.go.to")), "createGroup", UUID.randomUUID().toString());
+        CreateGroupRequest payload = groupRequest.payload();
+        doorClient.request(payload.getId(), payload, RequestMethod.CREATE_GROUP);
         return fu;
-    }
-
-    public static class Req<T> {
-        @SerializedName("payload")
-        final T t;
-        @SerializedName("to")
-        final String to;
-
-        public Req(T t, String to) {
-            this.t = t;
-            this.to = to;
-        }
     }
 
     private Request<CreateGroupRequest> createGroupRequest() {
         return new CreateGroupRequest.Builder()
+                .id(UUID.randomUUID().toString())
                 .profile(new ProfileInfo("name", null, "description"))
                 .config(new GroupConfiguration(GroupType.close))
                 .appDomain("go.to")

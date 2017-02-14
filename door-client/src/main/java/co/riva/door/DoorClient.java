@@ -4,19 +4,17 @@ import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.Protocol;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
-
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
-import java.util.UUID;
-import java.util.concurrent.*;
-
-import co.riva.door.config.DoorConfig;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
 
 import static co.riva.door.FutureUtils.thenOnException;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 //Not ThreadSafe
 public class DoorClient implements Pinger.Sender {
@@ -26,35 +24,25 @@ public class DoorClient implements Pinger.Sender {
     private final Pinger pinger;
     @NotNull
     private final DoorLogger logger;
-    @NotNull
-    private final DoorConfig doorConfig;
     @Nullable
     private Transport transport;
     private State state;
     private CompletableFuture<Void> isConnectionReady;
-    private String connectionID;
     private final Gson gson;
 
-    public DoorClient(@NotNull DoorConfig doorConfig,
-                      @NotNull DoorLogger doorLogger) {
+    public DoorClient(@NotNull DoorLogger doorLogger) {
         logger = doorLogger;
         isConnectionReady = new CompletableFuture<>();
         pinger = new Pinger(this, doorLogger, Executors.newSingleThreadScheduledExecutor());
         state = State.DISCONNECTED;
-        this.doorConfig = doorConfig;
         this.gson = new Gson();
     }
 
-    /**
-     * Asynchronous call to connect to door
-     */
-    @SuppressWarnings("UnusedDeclaration")
     public CompletionStage<Void> connect(@NotNull ConnectionConfig connectionConfig) {
         if (isDisconnected()) {
             state = State.CONNECTING;
             transport = new Transport();
             transport.setListener(getTransportListener());
-            final int socketTimeout = doorConfig.getSocketTimeout();
 
             return transport.connect(connectionConfig)
                     .whenComplete(thenOnException(throwable -> moveToDisconnectedState(throwable, connectionConfig)));
@@ -75,9 +63,6 @@ public class DoorClient implements Pinger.Sender {
         return CompletableFuture.completedFuture(moveToDisconnectedState(new Exception(reason), null));
     }
 
-    /**
-     * @return true if socket was disconnected by this call, false if socket was already disconnected
-     */
     private boolean moveToDisconnectedState(Throwable reason, ConnectionConfig connectionConfig) {
 
         final boolean previouslyDisconnected = isDisconnected();
@@ -99,7 +84,6 @@ public class DoorClient implements Pinger.Sender {
         return !previouslyDisconnected;
     }
 
-    @SuppressWarnings("UnusedDeclaration")
     public boolean isConnected() {
         return state == State.CONNECTED;
     }
@@ -108,65 +92,13 @@ public class DoorClient implements Pinger.Sender {
         return state == State.DISCONNECTED;
     }
 
-    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
-                                            @NotNull final DoorEnvelopeType doorEnvelopeType) {
-        return sendPacket(envelopeBody, doorEnvelopeType, null);
-    }
-
-    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
-                                            @NotNull final DoorEnvelopeType doorEnvelopeType,
-                                            @Nullable final String doorEnvelopeMethod) {
-        return sendPacket(envelopeBody, doorEnvelopeType, doorEnvelopeMethod, UUID.randomUUID().toString());
-    }
-
-    public CompletionStage<Void> sendPacket(@NotNull final String envelopeBody,
-                                            @NotNull final DoorEnvelopeType doorEnvelopeType,
-                                            @Nullable final String doorEnvelopeMethod,
-                                            @Nullable final String flowId) {
-        checkNotNull(connectionID);
-        DoorEnvelope.Type type = DoorEnvelope.Type.getEnum(doorEnvelopeType);
-        DoorEnvelope envelope = new DoorEnvelope(type, envelopeBody, connectionID, null,
-                doorEnvelopeMethod, flowId);
-        return sendMessage(envelope);
-    }
-
-    public CompletionStage<Void> sendRequest(@NotNull final String envelopeBody,
-                                             @Nullable final String doorEnvelopeMethod,
-                                             @Nullable final String flowId) {
-        checkNotNull(connectionID);
-        DoorEnvelope envelope = new DoorEnvelope(DoorEnvelope.Type.O_REQUEST, envelopeBody, connectionID, null,
-                doorEnvelopeMethod, flowId);
-        return sendMessage(envelope);
-    }
-
-    @SuppressWarnings("UnusedDeclaration")
-    public CompletionStage<Void> sendStart(@NotNull final String entity,
-                                           @NotNull final String startPayload,
-                                           @Nullable final String flowId) {
-        connectionID = entity + '_' + UUID.randomUUID();
-        DoorEnvelope message = new DoorStartEnvelope(DoorEnvelope.Type.OMS_AUTH, startPayload,
-                connectionID, entity, doorConfig.getUaInfo(), doorConfig.isTraceEnabled(),
-                flowId);
-
-        return sendMessage(message);
-    }
-
-    @SuppressWarnings("UnusedDeclaration")
-    public CompletionStage<Void> sendEnd(@NotNull final String connectionId,
-                                         @NotNull final String endXml) {
-        DoorEnvelope message = new DoorEnvelope(DoorEnvelope.Type.END, endXml, connectionId,
-                null, null, null);
-        return sendMessage(message);
-    }
-
-    @SuppressWarnings("UnusedDeclaration")
     public void addListener(DoorListener listener) {
         listeners.add(listener);
     }
 
     @Override
     public void sendPing() {
-        sendMessage(new DoorEnvelope(DoorEnvelope.Type.PING, null, null, null, null, null));
+        send(new DoorEnvelope(DoorEnvelope.Type.PING, null, null, null, null));
     }
 
     @Override
@@ -174,8 +106,7 @@ public class DoorClient implements Pinger.Sender {
         disconnect("ping_pong_timeout");
     }
 
-    /*privates*/
-    private CompletionStage<Void> sendMessage(final DoorEnvelope doorEnvelope) {
+    public CompletionStage<Void> send(DoorEnvelope doorEnvelope) {
         if (transport != null) {
             String json = gson.toJson(doorEnvelope);
             logger.log("||>>" + json);

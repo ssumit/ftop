@@ -1,15 +1,13 @@
 package co.riva.auth;
 
-import co.riva.door.DoorClient;
 import co.riva.door.DoorEnvelopeType;
 import co.riva.door.DoorListener;
 import co.riva.door.config.ConnectionConfig;
+import co.riva.door.config.DoorConfig;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import olympus.common.JID;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -19,13 +17,12 @@ public class AuthHelper {
 
     private final JID jid;
     private final String token;
-    private final DoorClient doorClient;
-    private String streamId;
+    private final SimpleDoorClient doorClient;
     private final Gson gson = new Gson();
     private final DoorListener doorListener;
     private final CompletableFuture<Void> isAuthenticated;
 
-    public AuthHelper(JID jid, String token, DoorClient doorClient) {
+    public AuthHelper(JID jid, String token, SimpleDoorClient doorClient) {
         this.jid = jid;
         this.token = token;
         this.doorClient = doorClient;
@@ -33,22 +30,16 @@ public class AuthHelper {
         this.doorListener = getListener();
     }
 
-    public CompletionStage<Void> authenticate() {
-        String flowId = UUID.randomUUID().toString();
+    public CompletionStage<Void> authenticate(DoorConfig doorConfig, String streamID) {
         doorClient.addListener(doorListener);
-        String streamPacket = getStreamPacket(new Credential(jid, token));
-        doorClient.sendStart(jid.toString(), streamPacket, flowId)
+        String streamPacket = getStreamPacket(new Credential(jid, token), streamID);
+        doorClient.sendStart(jid.toString(), streamPacket, doorConfig)
                 .whenComplete(thenOnException(isAuthenticated::completeExceptionally));
         return isAuthenticated;
     }
 
-    public String getStreamID() {
-        return streamId;
-    }
-
-    private String getStreamPacket(@NotNull Credential credential) {
-        this.streamId = createStreamId(credential.getBareJid());
-        AuthPacket authPacket = new AuthPacket(credential, this.streamId);
+    private String getStreamPacket(Credential credential, String streamID) {
+        AuthPacket authPacket = new AuthPacket(credential, streamID);
         return gson.toJson(authPacket);
     }
 
@@ -121,10 +112,6 @@ public class AuthHelper {
         } catch (Exception e) {
         }
         return false;
-    }
-
-    private String createStreamId(JID bareJID) {
-        return bareJID + "_" + UUID.randomUUID();
     }
 
     static class AuthResponse {
