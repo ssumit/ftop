@@ -3,6 +3,7 @@ package co.riva.group;
 import co.riva.auth.SimpleDoorClient;
 import co.riva.door.DoorEnvelopeType;
 import co.riva.door.RequestMethod;
+import com.google.gson.Gson;
 import olympus.flock.messages.kronos.GroupConfiguration;
 import olympus.flock.messages.kronos.GroupType;
 import olympus.flock.messages.kronos.ProfileInfo;
@@ -39,14 +40,13 @@ public class GroupMessageHelper {
         return new SimpleDoorClient.MessageListener() {
             @Override
             public void onNewMessage(DoorEnvelopeType type, String message) {
-                if (requestID != null && message.contains(requestID)) {
-                    if (type.equals(DoorEnvelopeType.O_RESPONSE)) {
-                        responseFuture.complete(message);
-                        doorClient.removeListener(this);
-                    } else if (type.equals(DoorEnvelopeType.O_MESSAGE)) {
-                        notificationFuture.complete(message);
-                        doorClient.removeListener(this);
-                    }
+                if (requestID != null && message.contains(requestID) && type.equals(DoorEnvelopeType.O_RESPONSE)) {
+                    responseFuture.complete(message);
+                } else if (type.equals(DoorEnvelopeType.O_MESSAGE) && message.contains("GROUP_UPDATE_NOTIFICATION")) {
+                    notificationFuture.complete(message);
+                }
+                if (responseFuture.isDone() && notificationFuture.isDone()) {
+                    doorClient.removeListener(this);
                 }
             }
 

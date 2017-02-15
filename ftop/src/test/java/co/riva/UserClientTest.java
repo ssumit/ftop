@@ -1,5 +1,6 @@
 package co.riva;
 
+import co.riva.group.GroupMessageHelper;
 import olympus.common.JID;
 import org.junit.Test;
 
@@ -14,7 +15,9 @@ public class UserClientTest {
                 .connect()
                 .thenCompose(UserClient::authenticate)
                 .thenCompose(__ -> {
-                    return userClient.getGroupMessageHelper().createGroup()
+                    GroupMessageHelper groupMessageHelper = userClient.getGroupMessageHelper();
+                    return groupMessageHelper.createGroup()
+                            .thenCompose(____ -> groupMessageHelper.getNotificationFuture())
                             .thenApply(___ -> userClient);
                 })
                 .thenCompose(UserClient::disconnect)
