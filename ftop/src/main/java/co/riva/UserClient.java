@@ -3,7 +3,7 @@ package co.riva;
 import co.riva.auth.SimpleDoorClient;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
-import co.riva.group.GroupMessageHelper;
+import co.riva.group.CreateGroupHelper;
 import olympus.common.JID;
 
 import java.util.concurrent.CompletableFuture;
@@ -17,7 +17,6 @@ public class UserClient {
 
     private final SimpleDoorClient doorClient;
     private final ScheduledExecutorService executorService;
-    private final GroupMessageHelper groupMessageHelper;
     private static final String DOOR_HOST = "doorstaging.handler.talk.to";
     private static final int DOOR_PORT = 995;
 
@@ -25,11 +24,14 @@ public class UserClient {
     public UserClient(JID userJID, String authToken) {
         this.executorService = Executors.newSingleThreadScheduledExecutor();
         doorClient = new SimpleDoorClient(userJID, authToken, executorService);
-        groupMessageHelper = new GroupMessageHelper(doorClient);
     }
 
-    public GroupMessageHelper getGroupMessageHelper() {
-        return groupMessageHelper;
+    public CompletionStage<UserClient> createGroup() {
+        CreateGroupHelper createGroupHelper = new CreateGroupHelper(doorClient);
+        return createGroupHelper.createGroup()
+                .thenCompose(____ -> createGroupHelper.getNotificationFuture())
+                .thenApply(___ -> this);
+
     }
 
     public CompletionStage<UserClient> authenticate() {

@@ -15,13 +15,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 //for single request response
-public class GroupMessageHelper {
+public class CreateGroupHelper {
     private CompletableFuture<String> responseFuture = new CompletableFuture<>();
     private CompletableFuture<String> notificationFuture = new CompletableFuture<>();
     private final SimpleDoorClient doorClient;
     private String requestID;
 
-    public GroupMessageHelper(SimpleDoorClient doorClient) {
+    public CreateGroupHelper(SimpleDoorClient doorClient) {
         this.doorClient = doorClient;
     }
 
