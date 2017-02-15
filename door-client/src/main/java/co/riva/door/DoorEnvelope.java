@@ -29,16 +29,21 @@ public class DoorEnvelope {
     private final String info;
     @Nullable
     @SerializedName("flowId")
-    private final String flowid;
+    private final String flowId;
 
     public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
-                        @Nullable String info, @Nullable String method) {
+                        @Nullable String info, @Nullable String method, @Nullable String flowID) {
         this.body = body;
         this.id = id;
         this.type = type.getValue();
         this.info = info;
         this.method = method;
-        this.flowid = UUID.randomUUID().toString();
+        this.flowId = flowID;
+    }
+
+    public DoorEnvelope(@NotNull Type type, @Nullable String body, @Nullable String id,
+                        @Nullable String info, @Nullable String method) {
+        this(type, body, id, info, method, UUID.randomUUID().toString());
     }
 
     @Nullable
@@ -68,12 +73,12 @@ public class DoorEnvelope {
 
     @Nullable
     public String getFlowId() {
-        return flowid;
+        return flowId;
     }
 
     public enum Type {
         PING("ping"), PONG("pong"), END("s:end"), DEBUG("debugInfo"), ERROR("error"),
-        OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN("unknown"), O_REQUEST("o:request");
+        OMS_AUTH("o:auth"), OMS_MESSAGE("o:message"), UNKNOWN("unknown"), O_REQUEST("o:request"), O_RESPONSE("o:response");
 
         private final String _value;
 
@@ -90,24 +95,6 @@ public class DoorEnvelope {
             return UNKNOWN;
         }
 
-        public static Type getEnum(@NotNull DoorEnvelopeType doorEnvelopeType) {
-            Type type = null;
-            switch (doorEnvelopeType) {
-                case O_AUTH:
-                    type = OMS_AUTH;
-                    break;
-                case O_MESSAGE:
-                    type = OMS_MESSAGE;
-                    break;
-                case O_REQUEST:
-                    type = OMS_MESSAGE;
-                    break;
-                default:
-                    throw new RuntimeException("unsupported doorEnvelopeType: " + doorEnvelopeType.name());
-            }
-            return type;
-        }
-
         public static Optional<DoorEnvelopeType> getDoorEnvelopeTypeEnum(Type type) {
             DoorEnvelopeType doorEnvelopeType = null;
             if (type != null) {
@@ -117,6 +104,9 @@ public class DoorEnvelope {
                         break;
                     case OMS_MESSAGE:
                         doorEnvelopeType = DoorEnvelopeType.O_MESSAGE;
+                        break;
+                    case O_RESPONSE:
+                        doorEnvelopeType = DoorEnvelopeType.O_RESPONSE;
                         break;
                 }
             }

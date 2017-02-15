@@ -9,11 +9,11 @@ import com.google.gson.annotations.SerializedName;
 import olympus.common.JID;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
@@ -22,18 +22,24 @@ public class SimpleDoorClient {
     private final DoorClient doorClient;
     private final JID userJID;
     private final String authToken;
+    private final ScheduledExecutorService executorService;
     private String connectionID;
     private final Gson gson;
     private String streamID;
-    private Map<String, CompletionStage<String>> requestIDToResponse;
+    private List<MessageListener> listeners;
 
-    public SimpleDoorClient(JID userJID, String authToken) {
+    public SimpleDoorClient(JID userJID, String authToken, ScheduledExecutorService executorService) {
         this.userJID = userJID;
         this.authToken = authToken;
+        this.executorService = executorService;
         this.doorClient = new DoorClient(System.out::println);
+        this.listeners = new ArrayList<>();
         gson = new Gson();
-        requestIDToResponse = new HashMap<>();
         attachRequestListener();
+    }
+
+    public void addListener(MessageListener listener) {
+        listeners.add(listener);
     }
 
     public CompletionStage<Void> authenticate(DoorConfig doorConfig) {
@@ -48,11 +54,9 @@ public class SimpleDoorClient {
         return doorClient.send(doorEnvelope);
     }
 
-    public CompletionStage<Void> request(@NotNull String requestID,
-                                         @NotNull final Object requestBody,
+    public CompletionStage<Void> request(@NotNull final Object requestBody,
                                          @NotNull final RequestMethod doorEnvelopeMethod) {
         checkNotNull(connectionID);
-        requestIDToResponse.put(requestID, new CompletableFuture<>());
         DoorEnvelope envelope = new DoorEnvelope(DoorEnvelope.Type.O_REQUEST,
                 gson.toJson(new Req<>(requestBody, doorEnvelopeMethod.to())),
                 connectionID, null, doorEnvelopeMethod.methodName());
@@ -76,16 +80,16 @@ public class SimpleDoorClient {
         return doorClient.send(message);
     }
 
-    public void addListener(DoorListener listener) {
-        doorClient.addListener(listener);
-    }
-
     public CompletionStage<Void> connect(String doorHost, int doorPort, Protocol protocol) {
         return doorClient.connect(doorHost, doorPort, protocol);
     }
 
     public CompletionStage<Boolean> disconnect(String reason) {
         return doorClient.disconnect(reason);
+    }
+
+    public void removeListener(MessageListener listener) {
+        listeners.remove(listener);
     }
 
     private static class Req<T> {
@@ -103,30 +107,46 @@ public class SimpleDoorClient {
     private void attachRequestListener() {
         doorClient.addListener(new DoorListener() {
             @Override
-            public void onBytesReceived(String connectionId, DoorEnvelopeType type, byte... data) {
-                String response = new String(data);
-                ;
+            public void onBytesReceived(String connectionId, DoorEnvelopeType type, byte[] data) {
+                String jsonString = new String(data);
+                executorService.submit(() ->
+                        listeners.forEach(listener -> listener.onNewMessage(type, jsonString)));
             }
 
             @Override
             public void onConnected(boolean isConnected) {
+                System.out.println("Connected : " + isConnected);
             }
 
             @Override
-            public void onDisconnected(Throwable reason, ConnectionConfig connectionConfig) {
+            public void onDisconnected(Throwable throwable, ConnectionConfig connectionConfig) {
+                executorService.submit(() ->
+                        listeners.forEach(listener -> listener.onErrorReceived(throwable)));
             }
 
             @Override
             public void onAlert(String message) {
+                System.out.println("Alert : " + message);
             }
 
             @Override
-            public void onEndReceived(String connectionId, String reason) {
+            public void onEndReceived(String id, String reason) {
+                executorService.submit(() ->
+                        listeners.forEach(listener -> listener.onErrorReceived(new RuntimeException("on End received, reason: " + reason))));
             }
 
             @Override
-            public void onErrorReceived(String connectionId, String reason) {
+            public void onErrorReceived(String id, String reason) {
+                System.out.println("Error received");
+                executorService.submit(() ->
+                        listeners.forEach(listener -> listener.onErrorReceived(new RuntimeException("on Error received, reason: " + reason))));
             }
         });
+    }
+
+    public interface MessageListener {
+        void onNewMessage(DoorEnvelopeType type, String message);
+
+        void onErrorReceived(Throwable throwable);
     }
 }

@@ -1,8 +1,8 @@
 package co.riva.group;
 
-import co.riva.UserClient;
-import co.riva.door.RequestMethod;
 import co.riva.auth.SimpleDoorClient;
+import co.riva.door.DoorEnvelopeType;
+import co.riva.door.RequestMethod;
 import olympus.flock.messages.kronos.GroupConfiguration;
 import olympus.flock.messages.kronos.GroupType;
 import olympus.flock.messages.kronos.ProfileInfo;
@@ -13,40 +13,62 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public class GroupMessageHelper implements UserClient.RequestListener {
-    CompletableFuture<Void> fu = new CompletableFuture<>();
+//for single request response
+public class GroupMessageHelper {
+    private CompletableFuture<String> responseFuture = new CompletableFuture<>();
+    private CompletableFuture<String> notificationFuture = new CompletableFuture<>();
     private final SimpleDoorClient doorClient;
+    private String requestID;
 
     public GroupMessageHelper(SimpleDoorClient doorClient) {
         this.doorClient = doorClient;
     }
 
-    public CompletionStage<Void> createGroup() {
+    public CompletionStage<String> createGroup() {
         Request<CreateGroupRequest> groupRequest = createGroupRequest();
         groupRequest.to().setServiceName("groups");
         CreateGroupRequest payload = groupRequest.payload();
-        doorClient.request(payload.getId(), payload, RequestMethod.CREATE_GROUP);
-        return fu;
+        requestID = payload.getId();
+        SimpleDoorClient.MessageListener messageListener = getMessageListener();
+        doorClient.addListener(messageListener);
+        return doorClient.request(payload, RequestMethod.CREATE_GROUP)
+                .thenCompose(__ -> responseFuture);
+    }
+
+    private SimpleDoorClient.MessageListener getMessageListener() {
+        return new SimpleDoorClient.MessageListener() {
+            @Override
+            public void onNewMessage(DoorEnvelopeType type, String message) {
+                if (requestID != null && message.contains(requestID)) {
+                    if (type.equals(DoorEnvelopeType.O_RESPONSE)) {
+                        responseFuture.complete(message);
+                        doorClient.removeListener(this);
+                    } else if (type.equals(DoorEnvelopeType.O_MESSAGE)) {
+                        notificationFuture.complete(message);
+                        doorClient.removeListener(this);
+                    }
+                }
+            }
+
+            @Override
+            public void onErrorReceived(Throwable throwable) {
+                responseFuture.completeExceptionally(throwable);
+                notificationFuture.completeExceptionally(throwable);
+                doorClient.removeListener(this);
+            }
+        };
     }
 
     private Request<CreateGroupRequest> createGroupRequest() {
         return new CreateGroupRequest.Builder()
                 .id(UUID.randomUUID().toString())
-                .profile(new ProfileInfo("name", null, "description"))
+                .profile(new ProfileInfo("w234e", null, "description"))
                 .config(new GroupConfiguration(GroupType.close))
                 .appDomain("go.to")
                 .build();
     }
 
-    @Override
-    public void onErrorReceived() {
-        System.out.println();
-        fu.completeExceptionally(new RuntimeException("on Error"));
-    }
-
-    @Override
-    public void onNewMessage(String message) {
-        System.out.println(message);
-        fu.complete(null);
+    public CompletableFuture<String> getNotificationFuture() {
+        return notificationFuture;
     }
 }

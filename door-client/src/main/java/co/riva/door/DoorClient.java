@@ -98,7 +98,7 @@ public class DoorClient implements Pinger.Sender {
 
     @Override
     public void sendPing() {
-        send(new DoorEnvelope(DoorEnvelope.Type.PING, null, null, null, null));
+        send(new DoorEnvelope(DoorEnvelope.Type.PING, null, null, null, null, null));
     }
 
     @Override
@@ -127,10 +127,10 @@ public class DoorClient implements Pinger.Sender {
                     return;
                 }
                 logger.log("||<<" + gson.toJson(doorEnvelope));
-                handleRecievedEnvelope(doorEnvelope);
+                handleIncomingEnvelope(doorEnvelope);
             }
 
-            private void handleRecievedEnvelope(final DoorEnvelope doorEnvelope) {
+            private void handleIncomingEnvelope(final DoorEnvelope doorEnvelope) {
                 final DoorEnvelope.Type type = doorEnvelope.getType();
                 switch (type) {
                     case PONG:
@@ -186,6 +186,7 @@ public class DoorClient implements Pinger.Sender {
     }
 
     private void fireOnBytesReceived(String connectionId, DoorEnvelope.Type type, byte... data) {
+        System.out.println(type.name());
         final Optional<DoorEnvelopeType> envelopeTypeOptional = DoorEnvelope.Type.getDoorEnvelopeTypeEnum(type);
         if (envelopeTypeOptional.isPresent()) {
             final DoorEnvelopeType doorEnvelopeType = envelopeTypeOptional.get();

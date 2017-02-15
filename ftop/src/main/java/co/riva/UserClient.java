@@ -1,11 +1,6 @@
 package co.riva;
 
-import co.riva.auth.AuthHelper;
-import co.riva.door.DoorClient;
-import co.riva.door.DoorEnvelopeType;
-import co.riva.door.DoorListener;
 import co.riva.auth.SimpleDoorClient;
-import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
 import co.riva.group.GroupMessageHelper;
@@ -22,7 +17,6 @@ public class UserClient {
 
     private final SimpleDoorClient doorClient;
     private final ScheduledExecutorService executorService;
-    private MessageListener listener;
     private final GroupMessageHelper groupMessageHelper;
     private static final String DOOR_HOST = "doorstaging.handler.talk.to";
     private static final int DOOR_PORT = 995;
@@ -30,56 +24,12 @@ public class UserClient {
 
     public UserClient(JID userJID, String authToken) {
         this.executorService = Executors.newSingleThreadScheduledExecutor();
-        doorClient = new SimpleDoorClient(userJID, authToken);
+        doorClient = new SimpleDoorClient(userJID, authToken, executorService);
         groupMessageHelper = new GroupMessageHelper(doorClient);
-        doorClient.addListener(new DoorListener() {
-            @Override
-            public void onBytesReceived(String connectionId, DoorEnvelopeType type, byte[] data) {
-                String jsonString = new String(data);
-                System.out.println("Data : " + jsonString);
-                if (type.equals(DoorEnvelopeType.O_MESSAGE)) {
-                    if (listener != null) {
-                        listener.onNewMessage(jsonString);
-                    }
-                    groupMessageHelper.onNewMessage(jsonString);
-                }
-            }
-
-            @Override
-            public void onConnected(boolean isConnected) {
-                System.out.println("Connected : " + isConnected);
-            }
-
-            @Override
-            public void onDisconnected(Throwable reason, ConnectionConfig connectionConfig) {
-                System.out.println("Disconnected : " + reason);
-                groupMessageHelper.onErrorReceived();
-            }
-
-            @Override
-            public void onAlert(String message) {
-                System.out.println("Alert : " + message);
-            }
-
-            @Override
-            public void onEndReceived(String id, String reason) {
-                System.out.println("End received");
-            }
-
-            @Override
-            public void onErrorReceived(String id, String reason) {
-                System.out.println("Error received");
-                groupMessageHelper.onErrorReceived();
-            }
-        });
     }
 
     public GroupMessageHelper getGroupMessageHelper() {
         return groupMessageHelper;
-    }
-
-    public void setListener(MessageListener listener) {
-        this.listener = listener;
     }
 
     public CompletionStage<UserClient> authenticate() {
@@ -108,13 +58,5 @@ public class UserClient {
                 .whenComplete(thenOnException(response::completeExceptionally)));
         return response
                 .thenApply(__ -> UserClient.this);
-    }
-
-    public interface MessageListener {
-        void onNewMessage(String message);
-    }
-
-    public interface RequestListener extends MessageListener {
-        void onErrorReceived();
     }
 }

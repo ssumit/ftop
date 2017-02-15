@@ -1,8 +1,6 @@
 package co.riva.auth;
 
 import co.riva.door.DoorEnvelopeType;
-import co.riva.door.DoorListener;
-import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.DoorConfig;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -19,7 +17,6 @@ public class AuthHelper {
     private final String token;
     private final SimpleDoorClient doorClient;
     private final Gson gson = new Gson();
-    private final DoorListener doorListener;
     private final CompletableFuture<Void> isAuthenticated;
 
     public AuthHelper(JID jid, String token, SimpleDoorClient doorClient) {
@@ -27,11 +24,10 @@ public class AuthHelper {
         this.token = token;
         this.doorClient = doorClient;
         this.isAuthenticated = new CompletableFuture<>();
-        this.doorListener = getListener();
     }
 
     public CompletionStage<Void> authenticate(DoorConfig doorConfig, String streamID) {
-        doorClient.addListener(doorListener);
+        doorClient.addListener(getListener());
         String streamPacket = getStreamPacket(new Credential(jid, token), streamID);
         doorClient.sendStart(jid.toString(), streamPacket, doorConfig)
                 .whenComplete(thenOnException(isAuthenticated::completeExceptionally));
@@ -43,51 +39,31 @@ public class AuthHelper {
         return gson.toJson(authPacket);
     }
 
-    private DoorListener getListener() {
-        return new DoorListener() {
+
+    private SimpleDoorClient.MessageListener getListener() {
+        return new SimpleDoorClient.MessageListener() {
             @Override
-            public void onBytesReceived(String id, DoorEnvelopeType type, byte[] data) {
-                String response = new String(data);
-                System.out.println("Data : " + response);
+            public void onNewMessage(DoorEnvelopeType type, String message) {
                 if (type.equals(DoorEnvelopeType.O_AUTH)) {
                     if (!isAuthenticated.isDone()) {
-                        if (isAuthSuccess(response)) {
+                        if (isAuthSuccess(message)) {
                             isAuthenticated.complete(null);
-                        } else if (isAuthFailure(response)) {
-                            isAuthenticated.completeExceptionally(new RuntimeException("Auth failure: " + data));
+                            doorClient.removeListener(this);
+                        } else if (isAuthFailure(message)) {
+                            isAuthenticated.completeExceptionally(new RuntimeException("Auth failure: " + message));
+                            doorClient.removeListener(this);
                         }
                     }
                 }
+
             }
 
             @Override
-            public void onConnected(boolean isConnected) {
-                System.out.println("Connected : " + isConnected);
-            }
-
-            @Override
-            public void onDisconnected(Throwable reason, ConnectionConfig connectionConfig) {
+            public void onErrorReceived(Throwable throwable) {
                 if (!isAuthenticated.isDone()) {
-                    isAuthenticated.completeExceptionally(reason);
+                    isAuthenticated.completeExceptionally(throwable);
                 }
-            }
-
-            @Override
-            public void onAlert(String message) {
-                System.out.println("Alert : " + message);
-            }
-
-            @Override
-            public void onEndReceived(String id, String reason) {
-                System.out.println("End received");
-            }
-
-            @Override
-            public void onErrorReceived(String id, String reason) {
-                System.out.println("Error received");
-                if (!isAuthenticated.isDone()) {
-                    isAuthenticated.completeExceptionally(new RuntimeException(reason));
-                }
+                doorClient.removeListener(this);
             }
         };
     }
@@ -98,7 +74,7 @@ public class AuthHelper {
             }.getType());
             return authResponse.getResponseType() != null &&
                     authResponse.getResponseType().equalsIgnoreCase("failure");
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         return false;
     }
@@ -109,7 +85,7 @@ public class AuthHelper {
             }.getType());
             return authResponse.getResponseType() != null &&
                     authResponse.getResponseType().equalsIgnoreCase("success");
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         return false;
     }
