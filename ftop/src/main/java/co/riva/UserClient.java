@@ -17,13 +17,31 @@ public class UserClient {
 
     private final SimpleDoorClient doorClient;
     private final ScheduledExecutorService executorService;
-    private static final String DOOR_HOST = "doorstaging.handler.talk.to";
-    private static final int DOOR_PORT = 995;
+    private static final String DEFAULT_DOOR_HOST = "doorstaging.handler.talk.to";
+    private static final int DEFAULT_DOOR_PORT = 995;
+    private static final DoorConfig DEFAULT_DOOOR_CONFIG = new DoorConfig(true, "device-type=service;os=Linux;os-version=14.04;app-name=goto;app-version=0.1-SNAPSHOT;timezone=+05:30");
+    private final String doorHost;
+    private final int doorPort;
+    private final DoorConfig doorConfig;
 
+    public UserClient(JID userJID, String authToken, String doorHost, int doorPort, DoorConfig doorConfig) {
+        this.executorService = Executors.newSingleThreadScheduledExecutor();
+        this.doorClient = new SimpleDoorClient(userJID, authToken, executorService);
+        this.doorHost = doorHost;
+        this.doorPort = doorPort;
+        this.doorConfig = doorConfig;
+    }
 
     public UserClient(JID userJID, String authToken) {
-        this.executorService = Executors.newSingleThreadScheduledExecutor();
-        doorClient = new SimpleDoorClient(userJID, authToken, executorService);
+        this(userJID, authToken, DEFAULT_DOOR_HOST, DEFAULT_DOOR_PORT, DEFAULT_DOOOR_CONFIG);
+    }
+
+    public UserClient(JID userJID, String authToken, String doorHost, int doorPort) {
+        this(userJID, authToken, doorHost, doorPort, DEFAULT_DOOOR_CONFIG);
+    }
+
+    public UserClient(JID userJID, String authToken, DoorConfig doorConfig) {
+        this(userJID, authToken, DEFAULT_DOOR_HOST, DEFAULT_DOOR_PORT, doorConfig);
     }
 
     public CompletionStage<UserClient> createGroup() {
@@ -36,7 +54,6 @@ public class UserClient {
 
     public CompletionStage<UserClient> authenticate() {
         CompletableFuture<Void> response = new CompletableFuture<>();
-        DoorConfig doorConfig = new DoorConfig(true, "device-type=service;os=Linux;os-version=14.04;app-name=goto;app-version=0.1-SNAPSHOT;timezone=+05:30");
         executorService.submit(() -> doorClient.authenticate(doorConfig)
                 .thenAccept(response::complete)
                 .whenComplete(thenOnException(response::completeExceptionally)));
@@ -46,7 +63,7 @@ public class UserClient {
 
     public CompletionStage<UserClient> connect() {
         CompletableFuture<Void> response = new CompletableFuture<>();
-        executorService.submit(() -> doorClient.connect(DOOR_HOST, DOOR_PORT, Protocol.TLS)
+        executorService.submit(() -> doorClient.connect(doorHost, doorPort, Protocol.TLS)
                 .thenAccept(response::complete)
                 .whenComplete(thenOnException(response::completeExceptionally)));
         return response
