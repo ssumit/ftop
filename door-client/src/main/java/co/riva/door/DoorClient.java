@@ -154,6 +154,7 @@ public class DoorClient implements Pinger.Sender {
                         break;
                     case OMS_AUTH:
                     case OMS_MESSAGE:
+                    case O_RESPONSE:
                     case UNKNOWN:
                         fireOnBytesReceived(doorEnvelope.getId(), type,
                                 doorEnvelope.getBody().getBytes());
@@ -186,7 +187,6 @@ public class DoorClient implements Pinger.Sender {
     }
 
     private void fireOnBytesReceived(String connectionId, DoorEnvelope.Type type, byte... data) {
-        System.out.println(type.name());
         final Optional<DoorEnvelopeType> envelopeTypeOptional = DoorEnvelope.Type.getDoorEnvelopeTypeEnum(type);
         if (envelopeTypeOptional.isPresent()) {
             final DoorEnvelopeType doorEnvelopeType = envelopeTypeOptional.get();

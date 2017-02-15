@@ -31,7 +31,7 @@ public class GroupMessageHelper {
         requestID = payload.getId();
         SimpleDoorClient.MessageListener messageListener = getMessageListener();
         doorClient.addListener(messageListener);
-        return doorClient.request(payload, RequestMethod.CREATE_GROUP)
+        return doorClient.request(payload.getId(), payload, RequestMethod.CREATE_GROUP)
                 .thenCompose(__ -> responseFuture);
     }
 

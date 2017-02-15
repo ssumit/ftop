@@ -54,11 +54,12 @@ public class SimpleDoorClient {
         return doorClient.send(doorEnvelope);
     }
 
-    public CompletionStage<Void> request(@NotNull final Object requestBody,
+    public CompletionStage<Void> request(@NotNull String requestID,
+                                         @NotNull final Object requestBody,
                                          @NotNull final RequestMethod doorEnvelopeMethod) {
         checkNotNull(connectionID);
         DoorEnvelope envelope = new DoorEnvelope(DoorEnvelope.Type.O_REQUEST,
-                gson.toJson(new Req<>(requestBody, doorEnvelopeMethod.to())),
+                gson.toJson(new Req<>(requestBody, doorEnvelopeMethod.to(), requestID)),
                 connectionID, null, doorEnvelopeMethod.methodName());
         return doorClient.send(envelope);
     }
@@ -97,10 +98,13 @@ public class SimpleDoorClient {
         final T t;
         @SerializedName("to")
         final String to;
+        @SerializedName("id")
+        final String id;
 
-        public Req(T t, String to) {
+        public Req(T t, String to, String id) {
             this.t = t;
             this.to = to;
+            this.id = id;
         }
     }
 

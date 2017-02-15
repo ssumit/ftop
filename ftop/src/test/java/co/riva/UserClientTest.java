@@ -9,7 +9,7 @@ public class UserClientTest {
 
     @Test
     public void testAuth() throws ExecutionException, InterruptedException {
-        UserClient userClient = new UserClient(new JID("go.to", "apollo", "64vkt615oooyyy1y"), "r4hh5u2hrdvay525y5dharaa2dv55r4a");
+        UserClient userClient = new UserClient(new JID("go.to", "apollo", "b9bz9xrlbfxl0rlb"), "altuuay333tlbw311y1wyhawb1lbuwba");
         userClient
                 .connect()
                 .thenCompose(UserClient::authenticate)
