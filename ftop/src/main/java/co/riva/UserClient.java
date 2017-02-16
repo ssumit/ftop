@@ -3,7 +3,7 @@ package co.riva;
 import co.riva.auth.SimpleDoorClient;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
-import co.riva.group.CreateGroupHelper;
+import co.riva.group.GroupClient;
 import olympus.common.JID;
 
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +16,7 @@ import static co.riva.door.FutureUtils.thenOnException;
 public class UserClient {
 
     private final SimpleDoorClient doorClient;
+    private final GroupClient groupClient;
     private final ScheduledExecutorService executorService;
     private static final String DEFAULT_DOOR_HOST = "doorstaging.handler.talk.to";
     private static final int DEFAULT_DOOR_PORT = 995;
@@ -30,6 +31,7 @@ public class UserClient {
         this.doorHost = doorHost;
         this.doorPort = doorPort;
         this.doorConfig = doorConfig;
+        this.groupClient = new GroupClient(this, doorClient);
     }
 
     public UserClient(JID userJID, String authToken) {
@@ -44,12 +46,8 @@ public class UserClient {
         this(userJID, authToken, DEFAULT_DOOR_HOST, DEFAULT_DOOR_PORT, doorConfig);
     }
 
-    public CompletionStage<UserClient> createGroup() {
-        CreateGroupHelper createGroupHelper = new CreateGroupHelper(doorClient);
-        return createGroupHelper.createGroup()
-                .thenCompose(____ -> createGroupHelper.getNotificationFuture())
-                .thenApply(___ -> this);
-
+    public GroupClient getGroupClient() {
+        return groupClient;
     }
 
     public CompletionStage<UserClient> authenticate() {

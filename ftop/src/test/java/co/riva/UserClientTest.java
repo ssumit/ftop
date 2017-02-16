@@ -1,5 +1,6 @@
 package co.riva;
 
+import co.riva.group.GroupClient;
 import olympus.common.JID;
 import org.junit.Test;
 
@@ -13,7 +14,9 @@ public class UserClientTest {
         userClient
                 .connect()
                 .thenCompose(UserClient::authenticate)
-                .thenCompose(UserClient::createGroup)
+                .thenApply(UserClient::getGroupClient)
+                .thenCompose(GroupClient::createGroup)
+                .thenApply(GroupClient::getUserClient)
                 .thenCompose(UserClient::disconnect)
                 .toCompletableFuture().get();
     }
