@@ -63,6 +63,8 @@ public class GroupClient {
     }
 
     public CompletionStage<GroupClient> fetchAllGroups() {
-        return null;
+        FetchGroupListHelper fetchGroupListHelper = new FetchGroupListHelper(doorClient);
+        return fetchGroupListHelper.fetchGroup()
+                .thenApply(__ -> this);
     }
 }

@@ -20,4 +20,17 @@ public class UserClientTest {
                 .thenCompose(UserClient::disconnect)
                 .toCompletableFuture().get();
     }
+
+    @Test
+    public void testGroupList() throws ExecutionException, InterruptedException {
+        UserClient userClient = new UserClient(new JID("go.to", "apollo", "b9bz9xrlbfxl0rlb"), "altuuay333tlbw311y1wyhawb1lbuwba");
+        userClient
+                .connect()
+                .thenCompose(UserClient::authenticate)
+                .thenApply(UserClient::getGroupClient)
+                .thenCompose(GroupClient::fetchAllGroups)
+                .thenApply(GroupClient::getUserClient)
+                .thenCompose(UserClient::disconnect)
+                .toCompletableFuture().get();
+    }
 }
