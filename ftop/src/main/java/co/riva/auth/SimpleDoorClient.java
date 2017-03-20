@@ -5,7 +5,7 @@ import co.riva.door.config.ConnectionConfig;
 import co.riva.door.config.DoorConfig;
 import co.riva.door.config.Protocol;
 import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
 import olympus.common.JID;
 import org.jetbrains.annotations.NotNull;
 
@@ -93,15 +93,12 @@ public class SimpleDoorClient {
     }
 
     private static class Req<T> extends HashMap<String, Object> {
+        private transient static final Gson gson = new Gson();
+
         public Req(T t, String to, String id) {
-            for (Field field : t.getClass().getDeclaredFields()) {
-                field.setAccessible(true);
-                try {
-                    put(field.getName(), field.get(t));
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            Map<String, Object> mappedObject = gson.fromJson(gson.toJson(t), new TypeToken<Map<String, Object>>() {
+            }.getType());
+            putAll(mappedObject);
             put("to", to);
             put("id", id);
         }
