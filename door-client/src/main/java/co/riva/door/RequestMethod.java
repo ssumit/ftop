@@ -2,7 +2,7 @@ package co.riva.door;
 
 public enum RequestMethod {
     CREATE_GROUP("123@groups.go.to", "createGroup"),
-    FETCH_GROUP_LIST("123@groups.go.to","groupList");
+    FETCH_GROUP_LIST("b9bz9xrlbfxl0rlb@groups.go.to","groupList");
 
     private final String to;
     private final String methodName;

@@ -9,9 +9,8 @@ import com.google.gson.annotations.SerializedName;
 import olympus.common.JID;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -93,18 +92,18 @@ public class SimpleDoorClient {
         listeners.remove(listener);
     }
 
-    private static class Req<T> {
-        @SerializedName("payload")
-        final T t;
-        @SerializedName("to")
-        final String to;
-        @SerializedName("id")
-        final String id;
-
+    private static class Req<T> extends HashMap<String, Object> {
         public Req(T t, String to, String id) {
-            this.t = t;
-            this.to = to;
-            this.id = id;
+            for (Field field : t.getClass().getDeclaredFields()) {
+                field.setAccessible(true);
+                try {
+                    put(field.getName(), field.get(t));
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            put("to", to);
+            put("id", id);
         }
     }
 

@@ -7,6 +7,8 @@ import olympus.kronos.client.helpers.constants.GroupTrait;
 import olympus.kronos.client.requests.FetchGroupListRequest;
 import olympus.message.types.Request;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +38,7 @@ public class FetchGroupListHelper {
         Request<FetchGroupListRequest> groupRequest = new FetchGroupListRequest.Builder()
                 .id(UUID.randomUUID().toString())
                 .appDomain("go.to")
-                .filter(Collections.singletonList(GroupTrait.joined))
+                .filter(Arrays.asList(GroupTrait.joined, GroupTrait.open))
                 .build();
         groupRequest.to().setServiceName("groups");
         return groupRequest;

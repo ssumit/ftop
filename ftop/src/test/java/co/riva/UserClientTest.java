@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutionException;
 public class UserClientTest {
 
     @Test
-    public void testAuth() throws ExecutionException, InterruptedException {
+    public void testCreateGroup() throws ExecutionException, InterruptedException {
         UserClient userClient = new UserClient(new JID("go.to", "apollo", "b9bz9xrlbfxl0rlb"), "altuuay333tlbw311y1wyhawb1lbuwba");
         userClient
                 .connect()
